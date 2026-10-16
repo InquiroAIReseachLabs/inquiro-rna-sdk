@@ -12,14 +12,14 @@ That link opens a pre-filled sandbox with a real identity_verified event.
 Hit Submit. You'll see a dual-hash receipt come back and watch your browser verify it independently from our server. 25 free calls, no account required.
 
 FULL SDK (local development, 15 minutes):
-https://github.com/inquiroairesearchlabsinc/inquiro-rna-sdk
+https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk
 
 MIT licensed. Mock server, sample payloads for all 5 event types, verifier
 script, and a GitHub Actions workflow template you can drop into your own
 CI pipeline to verify receipts on every commit.
 
 ONE-CLICK ENVIRONMENT (GitHub Codespaces, 2 minutes):
-https://codespaces.new/inquiroairesearchlabsinc/inquiro-rna-sdk
+https://codespaces.new/InquiroAIReseachLabs/inquiro-rna-sdk
 
 Full pre-configured environment. Mock server starts automatically.
 Free on your GitHub account.

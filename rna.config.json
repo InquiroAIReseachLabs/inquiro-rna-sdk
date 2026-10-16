@@ -1,0 +1,5 @@
+{
+  "_comment": "Single source for SDK endpoints. Override base_url with the RNA_BASE_URL env var.",
+  "base_url": "https://aiflightrecorder-1.onrender.com/mcp",
+  "verify_url": "https://inquiroresearchlabs.ai/mcp"
+}

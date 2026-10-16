@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
-# Example 02: Submit an attestation payload and save the receipt.
+# Example 02: Submit an attestation and verify the receipt.
 # Run: bash examples/curl/02-submit-attestation.sh
-# Optionally set RNA_BASE_URL to point at the live API.
+# Endpoint: RNA_BASE_URL (default: live demo, see rna.config.json; mock: http://localhost:8000/mcp).
+# The live server needs an envelope (event_type, device_id, timestamp, signature,
+# payload) with a fresh timestamp each run; the mock accepts the same envelope.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
-BASE="${RNA_BASE_URL:-http://localhost:8000/mcp}"
-OUT="${RNA_RECEIPT_OUT:-/tmp/receipt.json}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$ROOT/scripts/rna_env.sh"
+BASE="$RNA_BASE_URL"
+OUT="${RNA_RECEIPT_OUT:-${TMPDIR:-/tmp}/receipt.json}"
 
-PAYLOAD=$(cat "$ROOT/payloads/identity_verified.json")
+BODY=$(rna_py -c 'import json,sys; sys.path.insert(0, sys.argv[1]); from scripts.first_receipt import build_attestation; doc=json.load(open(sys.argv[2])); print(json.dumps({"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"submit_attestation","arguments":build_attestation(doc)}}))' "$ROOT" "$ROOT/payloads/identity_verified.json")
 
-curl -s -X POST "$BASE" \
+curl -s -X POST "$BASE" ${RNA_KEY_ARGS[@]+"${RNA_KEY_ARGS[@]}"} \
   -H "Content-Type: application/json" \
-  -d "{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"tools/call\",\"params\":{\"name\":\"submit_attestation\",\"arguments\":{\"payload\":$PAYLOAD}}}" \
+  -d "$BODY" \
   -o "$OUT"
 
 echo "Receipt saved to $OUT"
-python3 "$ROOT/verifier/verify.py" "$OUT"
+rna_py "$ROOT/verifier/verify.py" "$OUT"

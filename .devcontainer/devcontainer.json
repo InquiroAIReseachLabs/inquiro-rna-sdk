@@ -2,7 +2,7 @@
   "name": "Inquiro RNA SDK",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
   "postCreateCommand": "python3 -m pip install --user 'uv' && export PATH=\"$HOME/.local/bin:$PATH\" && cd ${containerWorkspaceFolder}/mock && uv venv && uv pip install -r requirements.txt",
-  "postStartCommand": "export PATH=\"$HOME/.local/bin:$PATH\" && cd ${containerWorkspaceFolder}/mock && nohup uv run python mock_server.py > /tmp/mock_rna.log 2>&1 & sleep 3 && echo '=== Testing mock server ===' && curl -s -X POST http://localhost:8000/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"tools/list\",\"params\":{}}' | python3 -m json.tool && echo '' && echo '=== Mock server ready. Endpoint: http://localhost:8000/mcp ===' && echo '=== Live endpoint: https://aiflightrecorder.onrender.com/mcp ==='",
+  "postStartCommand": "export PATH=\"$HOME/.local/bin:$PATH\" && cd ${containerWorkspaceFolder}/mock && nohup uv run python mock_server.py > /tmp/mock_rna.log 2>&1 & sleep 3 && echo '=== Testing mock server ===' && curl -s -X POST http://localhost:8000/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"tools/list\",\"params\":{}}' | python3 -m json.tool && echo '' && echo '=== Mock server ready. Endpoint: http://localhost:8000/mcp ===' && echo \"=== Live endpoint: $(cd .. && python3 rna_config.py) ===\"",
   "customizations": {
     "vscode": {
       "extensions": ["ms-python.python"]

@@ -1,5 +1,12 @@
 """
-Verify RNA receipt: recompute SHA-256 and BLAKE3 of canonical attestation payload.
+Verify an RNA receipt.
+
+- Mock receipts (payload + sha256 + blake3): recompute both hashes offline.
+- Live flight recorder receipts (receipt_hash only, e.g. from
+  scripts/first_receipt.py): the hash also covers fields the server assigns,
+  so it cannot be recomputed offline. Ask the issuing server instead
+  (verify_receipt tool) and say so in the output.
+
 Usage: python verifier/verify.py <receipt.json|api-response.json>
 Exit 0 on success, 1 on failure.
 """
@@ -8,13 +15,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-
-import blake3  # noqa: E402
 
 from canonical_payload import canonical_bytes  # noqa: E402
 
@@ -52,6 +59,8 @@ def verify_receipt_data(receipt: dict[str, Any]) -> tuple[bool, str]:
     expected_b3 = receipt.get("blake3")
     if not isinstance(expected_sha, str) or not isinstance(expected_b3, str):
         return False, "receipt missing sha256 or blake3 string fields"
+    import blake3
+
     data = canonical_bytes(pl)
     got_sha = hashlib.sha256(data).hexdigest()
     got_b3 = blake3.blake3(data).hexdigest()
@@ -65,6 +74,32 @@ def verify_receipt_data(receipt: dict[str, Any]) -> tuple[bool, str]:
     return False, "FAILED: " + "; ".join(parts)
 
 
+def _live_hash(doc: dict[str, Any]) -> str | None:
+    """receipt_hash of a live receipt record or thin JSON-RPC response, else None."""
+    for src in (doc, doc.get("result") if isinstance(doc.get("result"), dict) else {}):
+        rh = src.get("receipt_hash")
+        if isinstance(rh, str) and rh and "sha256" not in src and "receipt" not in src:
+            return rh
+    return None
+
+
+def verify_live(doc: dict[str, Any], receipt_hash: str) -> tuple[bool, str]:
+    from rna_config import base_url
+
+    url = doc.get("endpoint") or base_url()
+    body = json.dumps({"jsonrpc": "2.0", "id": "1", "method": "tools/call",
+                       "params": {"name": "verify_receipt", "arguments": {"receipt_hash": receipt_hash}}}).encode()
+    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            result = json.loads(r.read()).get("result") or {}
+    except (urllib.error.URLError, ValueError) as e:
+        return False, f"FAIL: could not reach {url}: {e}"
+    if result.get("valid") is True:
+        return True, f"VERIFIED (server-side, {url}): receipt {receipt_hash[:12]}... is on the ledger and its dual hash matches"
+    return False, f"FAILED (server-side, {url}): receipt {receipt_hash[:12]}... not found or hash mismatch"
+
+
 def main() -> int:
     argv = [a for a in sys.argv[1:] if a not in ("--all",)]
     if not argv or argv[0] in ("-h", "--help"):
@@ -76,6 +111,11 @@ def main() -> int:
         return 1
     try:
         doc = _load_doc(path.read_text(encoding="utf-8"))
+        live = _live_hash(doc)
+        if live:
+            ok, msg = verify_live(doc, live)
+            print(msg)
+            return 0 if ok else 1
         receipt = _extract_receipt(doc)
     except (OSError, ValueError, json.JSONDecodeError) as e:
         print(f"FAIL: {e}", file=sys.stderr)

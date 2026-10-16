@@ -53,36 +53,40 @@ function verifyMerged(doc) {
   return ok;
 }
 
+// Endpoint: RNA_BASE_URL, else rna.config.json at the repo root.
+async function baseUrl() {
+  if (process.env.RNA_BASE_URL) return process.env.RNA_BASE_URL;
+  const cfg = JSON.parse(await readFile(new URL("../../rna.config.json", import.meta.url), "utf8"));
+  return cfg.base_url;
+}
+
+async function call(url, name, args) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: "1", method: "tools/call", params: { name, arguments: args } }),
+  });
+  const res = (await r.json()).result || {};
+  return res.content?.[0]?.text ? { ...res, ...JSON.parse(res.content[0].text) } : res;
+}
+
+// Live receipt hashes cover server-assigned fields, so the tamper test asks
+// the server: the real hash must verify and a one-character change must not.
 async function tamperTest() {
-  const url = "https://aiflightrecorder.onrender.com/mcp";
+  const url = await baseUrl();
   const attestation = {
     event_type: "identity_verified",
     device_id: "TAMPER-TEST-NODE",
     payload: { test: "tamper_detection" },
-    timestamp: "2026-01-01T00:00:00Z",
-    signature: "dGVzdA==",
+    timestamp: new Date().toISOString(), // fresh: the server rejects replays
+    signature: "dGVzdA==", // any non-empty value passes on the public demo tenant
   };
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "1",
-      method: "tools/call",
-      params: { name: "submit_attestation", arguments: attestation },
-    }),
-  });
-  const api = await r.json();
-  const res = api.result || {};
-  let rh = res.receipt_hash;
-  if (!rh && res.content?.[0]?.text) {
-    rh = JSON.parse(res.content[0].text).receipt_hash;
-  }
-  if (!rh) throw new Error("no receipt_hash");
-  const merged = { ...attestation, receipt_hash: rh };
-  if (!verifyMerged(merged)) throw new Error("original should verify");
-  merged.payload = { test: "TAMPERED" };
-  if (verifyMerged(merged)) throw new Error("tampered must fail");
+  const sub = await call(url, "submit_attestation", attestation);
+  const rh = sub.receipt_hash || (sub.receipt && `${sub.receipt.sha256}:${sub.receipt.blake3}`);
+  if (!rh) throw new Error(`no receipt_hash (accepted=${sub.accepted})`);
+  const flipped = rh.slice(0, -1) + (rh.endsWith("0") ? "1" : "0");
+  if ((await call(url, "verify_receipt", { receipt_hash: rh })).valid !== true) throw new Error("original should verify");
+  if ((await call(url, "verify_receipt", { receipt_hash: flipped })).valid !== false) throw new Error("tampered must fail");
   console.log("Tamper detection: WORKING");
 }
 
