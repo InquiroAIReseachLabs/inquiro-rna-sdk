@@ -25,7 +25,7 @@ It wraps `payloads/identity_verified.json` in the live envelope (`event_type`, `
 python3 verifier/verify.py receipt.json
 ```
 
-For a live receipt this is a server-side check (the hash covers server-assigned fields, so it cannot be recomputed offline). For a mock receipt it recomputes SHA256 and BLAKE3 offline. Tamper test: change one character of `receipt_hash` in `receipt.json` and run it again; it must fail.
+For a live receipt it recomputes `receipt_hash` offline from the returned `receipt_body` and checks `attestation_payload_hash` against your payload; with an older server that returns no body it falls back to a labelled server-side check. For a mock receipt it recomputes SHA256 and BLAKE3 offline. Tamper test: change one character of `receipt_hash` in `receipt.json` and run it again; it must fail.
 
 ## 4. Try other event types
 

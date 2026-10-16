@@ -36,7 +36,9 @@ python3 verifier/verify.py receipt.json
 
 The public demo tenant accepts any non-empty `signature`. A pilot tenant checks a real Ed25519 signature against your registered key.
 
-`verify.py` then confirms the receipt. Live receipt hashes also cover fields the server assigns, so for a live receipt it asks the issuing server (`verify_receipt`) and says so; for a mock receipt it recomputes both hashes offline. Change one character of `receipt_hash` in `receipt.json` and it fails.
+`verify.py` then confirms the receipt offline: the live server returns the stored record (`receipt_body`), and `verify.py` recomputes `receipt_hash` from it and checks that it binds your payload. Against an older server that returns no body, it asks the issuing server (`verify_receipt`) instead and says so. Mock receipts are recomputed offline too. Change one character of `receipt_hash` or of the body in `receipt.json` and it fails.
+
+If an attestation is rejected, the server says why (`reason`, for example `missing_fields`, `signature_invalid` or `replay`), and `first_receipt.py` prints it.
 
 ### Windows
 
