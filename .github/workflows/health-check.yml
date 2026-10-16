@@ -1,0 +1,34 @@
+# Daily: GET /health on the live flight recorder demo (host from rna.config.json,
+# or the RNA_BASE_URL repo variable). Fails the run, and so emails the repo's
+# watchers, if the service does not answer 200. A sleeping free-tier instance
+# can take about a minute to wake, so the request allows two minutes.
+name: Live health check
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    env:
+      RNA_BASE_URL: ${{ vars.RNA_BASE_URL }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: GET /health
+        run: |
+          url=$(python3 -c 'import rna_config; print(rna_config.health_url())')
+          rm -f /tmp/health.json
+          code=$(curl -sS --max-time 120 -o /tmp/health.json -w '%{http_code}' "$url") || code="000"
+          body=$(head -c 300 /tmp/health.json 2>/dev/null || true)
+          {
+            echo "### Live health check"
+            echo "- URL: \`$url\`"
+            echo "- HTTP: **$code**"
+            echo "- Body: \`$body\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" != "200" ]; then
+            echo "::error title=Live service down::GET $url returned HTTP $code (expected 200). Body: $body"
+            exit 1
+          fi
+          echo "OK: $url -> 200 $body"
