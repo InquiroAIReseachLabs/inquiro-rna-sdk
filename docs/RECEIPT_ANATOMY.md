@@ -12,7 +12,7 @@ HTTP responses follow JSON-RPC 2.0. For `tools/call`, the `result` object includ
 | Field | Meaning |
 |-------|---------|
 | `receipt_hash` | Dual hash `sha256_hex:blake3_hex` (129 characters) over the canonical attestation body |
-| `chain_position` | Merkle chain sequence position |
+| `chain_position` | Ledger sequence number (increases with each receipt; not contiguous per tenant) |
 | `accepted` | Whether the attestation was accepted |
 
 ## verify_receipt tool result
@@ -34,6 +34,8 @@ The attestation body hashed for `receipt_hash` is the JSON object with keys:
 
 `device_id`, `event_type`, `payload`, `signature`, `timestamp`
 
-serialized with **sorted keys**, **no insignificant whitespace**, UTF-8, using `separators=(',', ':')` (Python) or equivalent. Anyone with the same attestation JSON can recompute SHA256 and BLAKE3 and compare to the two halves of `receipt_hash`.
+serialized with **sorted keys**, **no insignificant whitespace**, UTF-8, using `separators=(',', ':')` (Python) or equivalent.
+
+On the **mock server**, anyone with the same attestation JSON can recompute SHA256 and BLAKE3 and compare them to the receipt. On the **live flight recorder**, `receipt_hash` also covers fields the server assigns (receipt ID, sequence, time), so it cannot be recomputed from the attestation alone; check it with the `verify_receipt` tool (`verifier/verify.py` does this for live receipts).
 
 See [verifier/README.md](../verifier/README.md) for CLI usage.

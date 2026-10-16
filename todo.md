@@ -21,6 +21,6 @@
 
 ```bash
 python verifier/verify.py <receipt.json>
-RNA_URL=http://localhost:8000/mcp bash examples/curl/01-initialize.sh
+RNA_BASE_URL=http://localhost:8000/mcp bash examples/curl/01-initialize.sh
 pip install -r requirements.txt && python examples/python/verify_receipt.py --tamper-test   # local mock; no network
 ```

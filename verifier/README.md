@@ -2,7 +2,7 @@
 
 Two independent verifiers ship with this SDK:
 
-- **`verify.py`** — Python CLI (recommended for CI). Requires `blake3` and matches the live API canonical attestation body.
+- **`verify.py`** — Python CLI (recommended for CI). Recomputes mock receipts offline (needs `blake3`); for live flight recorder receipts it runs a server-side `verify_receipt` check and labels the result as such.
 - **`verify.js`** — JavaScript module + Node CLI. Uses `@noble/hashes` for BLAKE3 and `crypto` for SHA256.
 
 ## Canonical JSON
@@ -15,26 +15,26 @@ Serialization: UTF-8, `sort_keys=True` (Python) or lexicographic key order at ev
 
 ## Input format
 
-Pass a **merged** JSON file: the original `payloads/*.json` attestation **plus** `receipt_hash` (and optional `chain_position`, `accepted`) from the API. Build it with:
+Any of:
 
-```bash
-python3 scripts/merge_attestation_response.py payloads/identity_verified.json /tmp/api.json /tmp/merged.json
-```
+- `receipt.json` written by `scripts/first_receipt.py` (live or mock)
+- a mock receipt, or a raw mock JSON-RPC response (`result.receipt` with `payload`, `sha256`, `blake3`)
+- a raw live JSON-RPC response (`result.receipt_hash`), checked server-side against `RNA_BASE_URL`
 
 ## CLI usage
 
 ```bash
-pip install blake3
-python verify.py /tmp/merged.json
+pip install blake3          # only needed for offline (mock) verification
+python verifier/verify.py receipt.json
 ```
 
 ```bash
-cd verifier && npm install && node verify.js /tmp/merged.json
+cd verifier && npm install && node verify.js /tmp/mock-receipt.json   # offline, mock receipts only
 ```
 
 ## Meaning of results
 
-- **VERIFIED / verified: true** — SHA256 and BLAKE3 (when enabled) match `receipt_hash` for the canonical attestation bytes.
+- **VERIFIED / verified: true** — offline: SHA256 and BLAKE3 match the canonical payload bytes. **VERIFIED (server-side, ...)** — the issuing server found the receipt on its ledger and its stored dual hash matches.
 - **FAILED** — Any mismatch means the attestation body does not match the receipt (tamper or wrong merge).
 
 See [docs/RECEIPT_ANATOMY.md](../docs/RECEIPT_ANATOMY.md).

@@ -5,7 +5,7 @@
 
 **Hash values** are real cryptographic computations (SHA-256 + BLAKE3 over the same canonical JSON as the Python verifier). **Merkle chain** uses a simple in-memory counter starting at 1. **Signatures** are `mock_ed25519_signature`. **Tenant isolation** is not implemented.
 
-Use the live API for production-grade receipt generation: `https://aiflightrecorder.onrender.com/mcp`.
+For real receipts use the live demo endpoint in [rna.config.json](../rna.config.json) (see the main README).
 
 Run (from repo root, after `pip install -r mock/requirements.txt`):
 
