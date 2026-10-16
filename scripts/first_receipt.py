@@ -106,16 +106,23 @@ def main() -> int:
     print(f"chain_position: {position}")
     print(f"receipt_hash:   {receipt_hash or '(none)'}")
     if not accepted:
-        print("FAIL: attestation rejected. The server does not say why; usual causes:\n"
-              "  - event_type not allowed for your tenant (see WARN above)\n"
-              "  - same device_id + event_type + timestamp sent twice (replay)\n"
-              "  - missing signature, or a pilot tenant whose Ed25519 key does not match", file=sys.stderr)
+        if res.get("reason"):
+            missing = f" ({', '.join(res['missing_fields'])})" if res.get("missing_fields") else ""
+            print(f"FAIL: attestation rejected: {res['reason']}{missing}", file=sys.stderr)
+        else:
+            print("FAIL: attestation rejected (this server version gives no reason); usual causes:\n"
+                  "  - event_type not allowed for your tenant (see WARN above)\n"
+                  "  - same device_id + event_type + timestamp sent twice (replay)\n"
+                  "  - missing signature, or a pilot tenant whose Ed25519 key does not match", file=sys.stderr)
         return 1
 
     record = {"endpoint": url, "attestation": att, "receipt_hash": receipt_hash,
               "chain_position": position, "accepted": accepted}
     if mock_receipt:
         record["receipt"] = mock_receipt
+    if isinstance(res.get("receipt_body"), dict):
+        # The stored record: verify.py recomputes receipt_hash from it offline.
+        record["receipt_body"] = res["receipt_body"]
     Path(args.out).write_text(json.dumps(record, indent=2), encoding="utf-8")
     print(f"Saved:          {args.out}")
 
