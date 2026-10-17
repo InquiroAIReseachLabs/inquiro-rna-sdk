@@ -22,8 +22,8 @@ Each `payloads/*.json` file is a top-level object with:
 
 ## What the receipt proves
 
-Each successful `submit_attestation` returns a `receipt_hash` (`sha256_hex:blake3_hex`) that binds the canonical serialization of those five fields. Independent verification recomputes the dual hash from the same attestation body.
+Each successful `submit_attestation` returns a `receipt_hash` (`sha256_hex:blake3_hex`) over the server's stored record (`receipt_body`), which includes `attestation_payload_hash`, the dual hash of your `payload`. Independent verification recomputes `receipt_hash` from `receipt_body` and `attestation_payload_hash` from the payload you sent (see [RECEIPT_ANATOMY.md](RECEIPT_ANATOMY.md)). On the mock server the hash is over the attestation body itself.
 
 ## Regulatory framing (high level)
 
-Immutable, time-stamped, independently verifiable records support audit and authenticity requirements in many jurisdictions; consult counsel for your use case (e.g. FRE 901(b)(9) discussion in the main README).
+Tamper-evident, time-stamped, independently verifiable records may support audit and authenticity requirements in many jurisdictions; consult counsel for your use case (e.g. FRE 901(b)(9) discussion in the main README). This is not legal advice.
