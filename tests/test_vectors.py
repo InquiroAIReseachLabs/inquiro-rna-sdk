@@ -18,6 +18,8 @@ sys.path.insert(0, str(ROOT / "verifier"))
 from canonical_payload import canonical_bytes  # noqa: E402
 from offline.purepy import blake3_hex, ed25519_verify  # noqa: E402
 from offline.verify import GENESIS, canonical, dual_hash, key_id, report, signature_ok, verify_ledger  # noqa: E402
+import verify as live_verifier  # noqa: E402  (verifier/verify.py; imported at collection time, before the
+# no-network fixture replaces socket.socket, because it pulls in urllib and ssl)
 
 DOC = ROOT / "docs" / "TEST_VECTORS.md"
 PATTERN = bytes(range(256)) * 5
@@ -144,13 +146,11 @@ def test_canonical_json_offline_rule():
 
 
 def test_canonical_json_live_rule():
-    import verify as live_verifier  # verifier/verify.py
     assert json.dumps(CANON_OBJ, sort_keys=True).encode() == CANON_LIVE
     assert live_verifier._dual_hex(CANON_LIVE.decode()) == (CANON_LIVE_SHA, CANON_LIVE_B3)
 
 
 def test_live_verifier_recomputes_a_receipt_body_with_the_live_rule():
-    import verify as live_verifier
     body = dict(CANON_OBJ)
     body["payload_hash"] = f"{CANON_LIVE_SHA}:{CANON_LIVE_B3}"
     ok, msg = live_verifier.verify_live_offline({}, body["payload_hash"], body)
