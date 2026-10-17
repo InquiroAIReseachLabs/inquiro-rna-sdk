@@ -148,3 +148,24 @@ Every mechanically checkable PASS reproduced: test counts (57, 12, 366/411, 23),
 **GO, with conditions, for the SDK offline path and evaluator bundle.** From a fresh clone with networking disabled the kit does exactly what it says: seals, chains, signs, detects edits/deletions/reordering, exports a bundle that verifies with Python alone, reproduces the demos byte-for-byte, and now ships known-answer vectors and a threat model that states what it cannot detect. An evaluator who reads `docs/THREAT_MODEL.md` first will not be surprised.
 
 **HOLD for the hosted sandbox and the website until three things are true:** (1) the `audit/final-oct16` PRs are merged and deployed, because the live site still carries the "1.6 seconds", "LIVE", "immutable" and unhedged trust wording until then; (2) `scripts/final_audit.sh` passes against the live host and site from Matthew's machine (this audit could not reach them); (3) counsel has signed off on the compliance and patent sentences, or they are removed. The flight recorder is fit to show as a free-tier demo with a temporary ledger, and nothing more, which is what the copy now says.
+
+## Close-out addendum, 17 October 2026 (after the live run of `a79748c`)
+
+The live run of `scripts/final_audit.sh` at `a79748c` gave 33 pass and 4 fail. All four were defects in the audit scripts, not the product. They are fixed in the close-out PR:
+
+- Section 4 matched its own file and the audit records. Files that name the retired host on purpose are now excluded by name, and the grep's last-match `--include`/`--exclude` order is fixed.
+- The link crawl failed on the retired host, the old GitHub org slug and three primary sources that block bots. These are now `NEEDS HUMAN CHECK` with a reason each (`scripts/link_allowlist.json`), and they no longer fail the run.
+- Section 7 banned "under USPTO examination", which is the owner-approved patent sentence on `/rna/`. That ban is removed; the other patent bans stay.
+- `smoke_test.sh` failed through the same crawl. The audit now runs the crawl once (`SKIP_CRAWL=1` for the smoke test).
+
+New behaviour:
+
+- **Verdict line:** the script now ends with `READY FOR EVALUATOR`, or a numbered list of failing items, each with its fix. `NEEDS HUMAN CHECK` items are listed but never fail the run.
+- **Deploy freshness:** a `/health` without `persistence` fails with `RENDER NOT REDEPLOYED: Manual Deploy latest main, then rerun.`
+- **Layout and UI eval:** section 7b renders the live site in Chromium (website `scripts/ui-eval.mjs`). The eval found the `/regulatory-timeline/` defect in the screenshot Matthew sent: the status section sat in the table-of-contents column, and phone tables hid their last column. Both are fixed in the website close-out PR.
+
+Corrections to this report:
+
+- `CLAIMS.md` row "AIFlightRecorder root" calls that repository public. The GitHub API reports it private as of 17 October 2026; whether it was ever public is counsel question Q6(a).
+- Legal wording now follows `docs/LEGAL_LANGUAGE.md` (the approved sentence, pending counsel).
+- The open legal questions are in `counsel/COUNSEL_REVIEW.md`. Everything that needs a person, with click paths and expected results, is in `HUMAN_ACTIONS.md`.
