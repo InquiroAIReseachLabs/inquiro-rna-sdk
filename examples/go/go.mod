@@ -1,4 +1,4 @@
-module github.com/inquiroairesearchlabsinc/inquiro-rna-sdk/examples
+module github.com/InquiroAIReseachLabs/inquiro-rna-sdk/examples
 
 go 1.22.0
 

@@ -17,7 +17,7 @@ From the repo root:
 python3 scripts/first_receipt.py --out receipt.json
 ```
 
-It wraps `payloads/identity_verified.json` in the live envelope (`event_type`, `device_id`, `timestamp`, `signature`, `payload`) with a fresh timestamp, submits it, prints `accepted`, `chain_position` and `receipt_hash`, and checks the receipt with `verify_receipt`. Run it again: `chain_position` increases.
+It wraps `payloads/identity_verified.json` in the live envelope (`event_type`, `device_id`, `timestamp`, `signature`, `payload`) with a fresh timestamp, submits it, prints `accepted`, `chain_position` and `receipt_hash`, and checks the receipt with `verify_receipt`. Run it again: `chain_position` increases, by 5 on a quiet sandbox, because it counts every receipt in the server's ledger, including the server's own request and sanitization receipts ([why](RECEIPT_ANATOMY.md#why-chain_position-jumps-by-5-per-first_receiptpy-run)). Your per-tenant count is `tenant_seq` in `receipt_body`.
 
 ## 3. Verify your receipt
 
