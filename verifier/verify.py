@@ -124,8 +124,12 @@ def verify_live(doc: dict[str, Any], receipt_hash: str) -> tuple[bool, str]:
     from rna_config import base_url
 
     url = doc.get("endpoint") or base_url()
+    args = {"receipt_hash": receipt_hash}
+    sealed_at = (doc.get("attestation") or {}).get("timestamp")
+    if sealed_at:
+        args["sealed_at"] = sealed_at  # lets the server tell a reset ledger from a miss
     body = json.dumps({"jsonrpc": "2.0", "id": "1", "method": "tools/call",
-                       "params": {"name": "verify_receipt", "arguments": {"receipt_hash": receipt_hash}}}).encode()
+                       "params": {"name": "verify_receipt", "arguments": args}}).encode()
     req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=90) as r:
@@ -134,6 +138,10 @@ def verify_live(doc: dict[str, Any], receipt_hash: str) -> tuple[bool, str]:
         return False, f"FAIL: could not reach {url}: {e}"
     if result.get("valid") is True:
         return True, f"VERIFIED (server-side, {url}): receipt {receipt_hash[:12]}... is on the ledger and its dual hash matches"
+    if result.get("reason") == "ledger_reset":
+        return False, (f"NOT ON LEDGER (server-side, {url}): the server's ledger was reset after this receipt "
+                       f"was sealed. Not a sign of tampering. Verify offline from a receipt_body or an "
+                       f"exported bundle, or seal the event again.")
     return False, f"FAILED (server-side, {url}): receipt {receipt_hash[:12]}... not found or hash mismatch"
 
 

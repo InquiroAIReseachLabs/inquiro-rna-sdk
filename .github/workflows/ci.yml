@@ -31,7 +31,21 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install -r requirements.txt
-          pip install "requests>=2.31,<3"
+          pip install "requests>=2.31,<3" pytest
+
+      # Offline kit, scenario pack and ingest must work with no network at all:
+      # run them in a fresh network namespace (no interfaces but loopback, down).
+      # Hosted Linux runners block unprivileged user namespaces, hence sudo.
+      - name: Offline tests with networking disabled
+        run: |
+          offline() { sudo unshare --net -- sudo -u "$USER" env "PATH=$PATH" "$@"; }
+          if offline python -c "import socket; socket.create_connection(('1.1.1.1', 53), 3)"; then
+            echo "::error::network is reachable inside the namespace; the offline proof is void"
+            exit 1
+          fi
+          echo "confirmed: no network inside the namespace"
+          offline python -m pytest tests -q
+          offline python scripts/run_scenario.py check payloads/tactical_uas/demos/intact/receipts.jsonl payloads/tactical_uas/demo_key/demo_signer.pub
 
       # Poll the health endpoint instead of sleeping a fixed amount so that slow
       # runners don't miss the window.  20 × 1 s ≈ 20 s ceiling.

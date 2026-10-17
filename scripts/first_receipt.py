@@ -128,6 +128,9 @@ def main() -> int:
 
     check = lift(rpc(url, "tools/call", {"name": "verify_receipt", "arguments": {"receipt_hash": receipt_hash}}, "2"))
     print(f"verify_receipt: valid={check.get('valid')}")
+    if res.get("persistence") == "ephemeral" or check.get("persistence") == "ephemeral":
+        print("NOTE: this sandbox ledger is ephemeral and resets on restart. Keep "
+              f"{args.out}: it verifies offline from its receipt_body.")
     if check.get("valid") is not True:
         print("FAIL: server could not verify the receipt it just issued", file=sys.stderr)
         return 1

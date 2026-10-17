@@ -9,22 +9,57 @@ Dual-hash (SHA256 + BLAKE3) receipts with a ledger sequence position; Ed25519-si
 
 Read [`CLAUDEME.md`](CLAUDEME.md) (Inquiro execution standard) first.
 
+> **Public sandbox notice.** The hosted demo endpoint is a shared public sandbox. Send **synthetic data only**: no controlled, classified, export-restricted (for example ITAR or EAR), personal or customer data. Its ledger is **temporary** and is wiped whenever the service restarts. For anything you want to keep or show someone, use the offline kit below: it runs on your machine and never touches the network.
+
+---
+
+## Start here: an evaluator bundle, fully offline (2 minutes)
+
+The primary demo needs no account and no network. You seal a mission locally, export it as one zip, and anyone can verify that zip with Python alone.
+
+```bash
+git clone https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk && cd inquiro-rna-sdk
+pip install -r requirements.txt
+
+# 1. Make a signing key and seal a sample mission log into a signed, hash-chained ledger
+python3 scripts/ingest_log.py payloads/tactical_uas/mission.jsonl \
+    --ledger receipts.jsonl --key signer.pem --keygen signer.pub
+
+# 2. Verify it with the public key (no network)
+python3 -m offline verify receipts.jsonl signer.pub
+
+# 3. Export the evaluator bundle: receipts + public key + standalone verifier
+python3 -m offline bundle --ledger receipts.jsonl --public signer.pub --out evaluator_bundle.zip
+```
+
+Send `evaluator_bundle.zip` to a reviewer. They need only Python 3.9+, no install and no network:
+
+```bash
+unzip evaluator_bundle.zip && cd evaluator_bundle
+python3 verify.py receipts.jsonl public_key.pub
+# VERIFIED: 9 receipts, chain intact, signed by key <your key id>
+```
+
+The verifier recomputes every SHA-256 and BLAKE3 hash, checks every Ed25519 signature, and checks the sequence and hash links, so an edited, deleted, inserted or reordered receipt is reported. It uses the `blake3` and `cryptography` packages when present and bundled pure-Python implementations when not.
+
+See tampering and a missing operator decision caught: `python3 scripts/run_scenario.py demo` (details in [payloads/tactical_uas/](payloads/tactical_uas/README.md)). More in [docs/OFFLINE.md](docs/OFFLINE.md); performance on small hardware in [docs/SWAP_BENCHMARK.md](docs/SWAP_BENCHMARK.md).
+
 ---
 
 ## Endpoints
 
 | Endpoint | What it does | Access |
 |----------|--------------|--------|
-| `https://aiflightrecorder-1.onrender.com/mcp` | Flight recorder demo. Submit an attestation, get a dual-hash receipt, check it with `verify_receipt`. The quickstart below runs here. Demo ledger: receipts reset when the service restarts. | No account. Public demo tenant. |
+| `https://aiflightrecorder-1.onrender.com/mcp` | Flight recorder sandbox. Submit an attestation, get a dual-hash receipt, check it with `verify_receipt`. **Temporary ledger** (responses say `"persistence": "ephemeral"`): receipts reset when the service restarts. Synthetic data only. | No key: `submit_attestation`, `verify_receipt`. Pilot key (`X-Partner-Key`): also `verify_chain_segment`, `query_flight_summary`, `get_flight_health`. |
 | `https://inquiroresearchlabs.ai/mcp` | Public verifier. `rna_verify` checks a signed receipt and its chain. Verify only. | No account, no key. |
 
 The default host lives in [`rna.config.json`](rna.config.json). Every script and example reads it; set `RNA_BASE_URL` to point them somewhere else (for example the local mock, `http://localhost:8000/mcp`).
 
 ---
 
-## Your first receipt in 60 seconds
+## Try the hosted sandbox (60 seconds)
 
-No account. You need a clone of this repo and Python 3.9+; this step uses only the standard library.
+No account. You need a clone of this repo and Python 3.9+; this step uses only the standard library. The free instance may be asleep: `bash scripts/warmup.sh` wakes it and reports the latency.
 
 ```bash
 git clone https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk && cd inquiro-rna-sdk
@@ -37,6 +72,12 @@ python3 verifier/verify.py receipt.json
 The public demo tenant accepts any non-empty `signature`. A pilot tenant checks a real Ed25519 signature against your registered key.
 
 `verify.py` then confirms the receipt offline: the live server returns the stored record (`receipt_body`), and `verify.py` recomputes `receipt_hash` from it and checks that it binds your payload. Against an older server that returns no body, it asks the issuing server (`verify_receipt`) instead and says so. Mock receipts are recomputed offline too. Change one character of `receipt_hash` or of the body in `receipt.json` and it fails.
+
+The sandbox ledger is temporary. Keep the `receipt.json` files: they verify offline from their `receipt_body` even after the sandbox resets. If you look a receipt up after a reset, the server answers with `reason: ledger_reset`, not a tamper or chain error. For evidence you want to keep or share, seal locally and export a bundle as shown above:
+
+```bash
+python3 -m offline bundle --ledger receipts.jsonl --public signer.pub --out evaluator_bundle.zip
+```
 
 If an attestation is rejected, the server says why (`reason`, for example `missing_fields`, `signature_invalid` or `replay`), and `first_receipt.py` prints it.
 
