@@ -32,6 +32,8 @@ Surfaces that cannot be edited from these repositories (the protected website fi
 
 `built to comply`, `complies`, `compliant`, `compliance-ready`, `guarantee` (and `guaranteed`, `guarantees`), `certified`, `court-admissible` (and `court admissible`, `admissible in court`), `courts admit`.
 
+Also banned, because they tie a receipt to a framework as if it met it or overstate what a seal shows: `satisfy`, `satisfies`, `compliance challenge`, `Role in compliance`, `No alteration is possible`, `cannot be altered`. Say what a verifier can detect as `docs/THREAT_MODEL.md` (inquiro-rna-sdk) states it: any change to a sealed receipt breaks its hashes and signature; deletion or reordering is detectable by a verifier holding the chain or a prior head; a wholesale rewrite by someone with write access to the whole ledger is detectable only against a previously stored head or checkpoint.
+
 "Compliance" itself is not banned: the approved sentence uses it, and the `/compliance/` URLs stay. Do not use it as a claim ("compliance solution", "assess compliance with receipts").
 
 Enforced by:
