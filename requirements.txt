@@ -1,2 +1,3 @@
 # Verifier and local tooling
 blake3==1.0.8
+cryptography>=42.0.0
