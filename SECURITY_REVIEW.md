@@ -12,7 +12,7 @@ This document covers the public SDK components: mock MCP server, verifier, paylo
 | Hash algorithm weakness | Single-algorithm collision | Two independent algorithms required; both must match |
 | Replay attack | Resubmitting a captured receipt | `request_id` (UUID v4) + `chain_position` must be unique per ledger |
 | Mock vs production confusion | Treating mock receipts as production | Docstring and README label mock as PROTOCOL TESTING ONLY |
-| Secret exposure | Internal strings in public repo | CI gate scans for forbidden patterns before every push |
+| Secret exposure | Internal strings in public repo | `scripts/final_audit.sh` and the October 2026 audit scan for credential-shaped strings; there is no CI secret gate yet (roadmap) |
 | Dependency supply chain | Malicious `blake3` or `zeebo/blake3` update | Pin versions in requirements.txt / go.mod; review on bump |
 | MCP hook injection | Malicious MCP server in cloned repo config | Users must review `.claude/settings.json` before enabling MCP servers from untrusted repos |
 

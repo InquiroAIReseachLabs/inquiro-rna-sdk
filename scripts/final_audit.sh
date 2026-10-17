@@ -148,7 +148,8 @@ if [ ! -s "$TMP/pg.html" ]; then fail "could not fetch the live site"; else
   grep -q '"persistence": "ephemeral"' "$TMP/dev.html" && pass "live /developers/ carries the temporary-ledger note" || log "PENDING temporary-ledger note not live yet"
   grep -qi "not production systems" "$TMP/pg.html" && pass "live proving ground says: not production systems" || fail "live proving ground lacks the status line"
   grep -qi "Not yet validated against real outcomes" "$TMP/pg.html" && pass "live proving ground says: Not yet validated against real outcomes" || fail "live proving ground lacks the validation disclaimer"
-  grep -q "Patent pending" "$TMP/rna.html" && pass "live /rna/ uses patent-pending wording" || log "PENDING patent wording change not live yet"
+  grep -qi "patent pending\|patented" "$TMP/rna.html" && fail "live /rna/ uses wording the site gate bans (patent pending / patented)" || pass "live /rna/ patent wording is the owner-approved phrase or absent"
+  grep -qi "not production systems" "$TMP/rna.html" && pass "live /rna/ carries the status line" || fail "live /rna/ lacks the status line"
   grep -q 'id="status"' "$TMP/reg.html" && pass "live /regulatory-timeline/ has the status and sources section" || log "PENDING regulatory status section not live yet"
   for p in llms.txt llmsfull.txt security.txt; do [ -s "$TMP/$p" ] && pass "live $p reachable" || fail "live $p missing"; done
   grep -qi "immutable\|constant time" "$TMP/llmsfull.txt" && fail "live llms-full.txt still says immutable or constant time" || pass "live llms-full.txt free of immutable/constant-time wording"
