@@ -1,0 +1,4 @@
+chain:   FAILED: 2 problem(s) in 9 receipts
+           line 5 (seq 5): receipt_hash does not match the receipt body (edited receipt)
+           line 5 (seq 5): payload does not match payload_digest
+mission: OK: every detection has an operator decision; link loss handled
