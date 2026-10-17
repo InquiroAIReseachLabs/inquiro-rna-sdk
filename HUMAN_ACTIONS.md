@@ -127,4 +127,6 @@ The audit lists these as `NEEDS HUMAN CHECK` because the sites refuse automated 
 
 ## Close-out pull requests
 
-Filled in when the PRs were opened (see the end of this file).
+- inquiro-rna-sdk: https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk/pull/14
+- Inquiro-Website-: InquiroAIReseachLabs/Inquiro-Website- pull request 438 (private repository)
+- AIFlightRecorder: InquiroAIReseachLabs/AIFlightRecorder pull request 54 (private repository)
