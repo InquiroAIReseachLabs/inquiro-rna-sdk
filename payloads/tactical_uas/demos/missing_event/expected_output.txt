@@ -1,0 +1,5 @@
+chain:   FAILED: 2 problem(s) in 8 receipts
+           line 6 (seq 7): seq jumps 5 -> 7: 1 receipt(s) missing
+           line 6 (seq 7): prev_hash does not link to the previous receipt
+mission: FAILED
+  ai_detection seq 5 has no operator decision

@@ -1,0 +1,17 @@
+{
+  "event_type": "ai_detection",
+  "payload": {
+    "model_id": "det-eo-small",
+    "model_version": "2.4.1",
+    "confidence": 0.58,
+    "class": "ground_vehicle",
+    "sensor": "eo_camera",
+    "frame_id": 11807,
+    "bbox": [
+      133,
+      301,
+      40,
+      28
+    ]
+  }
+}

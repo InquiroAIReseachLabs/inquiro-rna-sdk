@@ -1,0 +1,8 @@
+{"ts": "2026-10-17T09:00:05Z", "event_type": "launch", "airframe_id": "UAS-DEMO-01", "mission_id": "TRAIN-0001", "site": "TEST-RANGE-A", "operator_id": "OP-01", "mode": "manual", "battery_pct": 98}
+{"ts": "2026-10-17T09:00:10Z", "event_type": "transition", "from_mode": "manual", "to_mode": "autonomous_waypoint", "altitude_m": 120, "airspeed_mps": 18.0}
+{"ts": "2026-10-17T09:00:15Z", "event_type": "ai_detection", "model_id": "det-eo-small", "model_version": "2.4.1", "confidence": 0.87, "class": "ground_vehicle", "sensor": "eo_camera", "frame_id": 10432, "bbox": [412, 220, 96, 64]}
+{"ts": "2026-10-17T09:00:20Z", "event_type": "operator_confirm", "operator_id": "OP-01", "detection_seq": 3, "decision": "confirm", "action": "log_and_continue"}
+{"ts": "2026-10-17T09:00:25Z", "event_type": "ai_detection", "model_id": "det-eo-small", "model_version": "2.4.1", "confidence": 0.58, "class": "ground_vehicle", "sensor": "eo_camera", "frame_id": 11807, "bbox": [133, 301, 40, 28]}
+{"ts": "2026-10-17T09:00:35Z", "event_type": "link_loss", "link": "c2_primary", "last_rssi_dbm": -97, "failsafe_timer_s": 10}
+{"ts": "2026-10-17T09:00:40Z", "event_type": "rth", "trigger": "link_loss_failsafe", "home_id": "PAD-1", "altitude_m": 80}
+{"ts": "2026-10-17T09:00:45Z", "event_type": "land", "site": "TEST-RANGE-A", "pad": "PAD-1", "battery_pct": 41}

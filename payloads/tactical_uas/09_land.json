@@ -1,0 +1,8 @@
+{
+  "event_type": "land",
+  "payload": {
+    "site": "TEST-RANGE-A",
+    "pad": "PAD-1",
+    "battery_pct": 41
+  }
+}

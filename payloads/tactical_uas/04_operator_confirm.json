@@ -1,0 +1,9 @@
+{
+  "event_type": "operator_confirm",
+  "payload": {
+    "operator_id": "OP-01",
+    "detection_seq": 3,
+    "decision": "confirm",
+    "action": "log_and_continue"
+  }
+}
