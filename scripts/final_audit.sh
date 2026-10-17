@@ -176,16 +176,26 @@ PY
   fetch "$SITE/company/" "$TMP/company.html"; fetch "$SITE/llms.txt" "$TMP/llms.txt"; fetch "$SITE/llms-full.txt" "$TMP/llmsfull.txt"
   fetch "$SITE/.well-known/security.txt" "$TMP/security.txt"; fetch "$SITE/rna/" "$TMP/rna.html"; fetch "$SITE/regulatory-timeline/" "$TMP/reg.html"
   fetch "$SITE/rna/compare/" "$TMP/compare.html"; fetch "$SITE/compliance/" "$TMP/compliance.html"
+  fetch "$SITE/compliance/fre-901/" "$TMP/comp_fre.html"; fetch "$SITE/compliance/dod-3000-09/" "$TMP/comp_dod.html"
+  fetch "$SITE/compliance/faa-part-108/" "$TMP/comp_faa.html"; fetch "$SITE/compliance/eu-ai-act-article-12/" "$TMP/comp_eu.html"
   if [ ! -s "$TMP/pg.html" ]; then fail "could not fetch the live site" "open $SITE/proving-ground/ in a browser; if it is down, check the Cloudflare dashboard, then rerun"; else
     # "under USPTO examination" is not banned here: it is the owner-approved
     # patent sentence on /rna/ (counsel item; see counsel/COUNSEL_REVIEW.md).
-    hits=0
-    for f in home pg dev company rna reg compare compliance llms llmsfull; do
+    # The /compliance/ hub and its four pages are scanned like the rest: each is linked from
+    # /regulatory-timeline/, and each must carry the approved sentence (docs/LEGAL_LANGUAGE.md)
+    # and none of the overclaims the website claims lint bans.
+    hits=0; scanned=0
+    for f in home pg dev company rna reg compare compliance comp_fre comp_dod comp_faa comp_eu llms llmsfull; do
       [ -f "$TMP/$f.html" ] && page="$TMP/$f.html" || page="$TMP/$f.txt"
-      for phrase in "in production" "Courts admit" "court-admissible" "tamper-proof" "unhackable" "immutable" "Verify any AI output" "every claim has a demonstration" "1.6 seconds" "built to comply" "complies" "compliant" "guarantee" "certified" "constant time"; do
+      scanned=$((scanned + 1))
+      for phrase in "in production" "Courts admit" "court-admissible" "tamper-proof" "unhackable" "immutable" "Verify any AI output" "every claim has a demonstration" "1.6 seconds" "built to comply" "complies" "compliant" "guarantee" "certified" "constant time" "satisfy" "satisfies" "compliance challenge" "Role in compliance" "No alteration is possible" "cannot be altered"; do
         grep -qi "$phrase" "$page" && { fail "live $f still says: $phrase" "$STALE_SITE"; hits=$((hits + 1)); }; done
     done
-    [ "$hits" -eq 0 ] && pass "banned phrases absent from 8 live pages, llms.txt and llms-full.txt"
+    [ "$hits" -eq 0 ] && pass "banned phrases absent from $scanned live pages and text files (incl. /compliance/ and its four pages, llms.txt, llms-full.txt)"
+    missing=0
+    for f in compliance comp_fre comp_dod comp_faa comp_eu; do
+      grep -q "does not by itself establish compliance or admissibility" "$TMP/$f.html" || { fail "live $f lacks the approved legal sentence" "$STALE_SITE"; missing=$((missing + 1)); }; done
+    [ "$missing" -eq 0 ] && pass "approved legal sentence present on the live /compliance/ hub and its four pages"
     grep -q "aiflightrecorder-1.onrender.com" "$TMP/dev.html" && pass "live /developers/ names the new host" || fail "live /developers/ does not name the new host" "$STALE_SITE"
     grep -q '"persistence": "ephemeral"' "$TMP/dev.html" && pass "live /developers/ carries the temporary-ledger note" || log "PENDING temporary-ledger note not live yet"
     grep -qi "not production systems" "$TMP/pg.html" && pass "live proving ground says: not production systems" || fail "live proving ground lacks the status line" "$STALE_SITE"
