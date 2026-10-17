@@ -21,6 +21,7 @@ Contents
   verify.py        standalone verifier (Python 3.9+, no network, no install)
   purepy.py        pure-Python BLAKE3 and Ed25519 used when the blake3 or
                    cryptography packages are not installed
+  checkpoint.py    checks signed checkpoints (verify.py --checkpoint FILE.ckpt)
   SHA256SUMS       checksums of the files above
 
 Verify (works with networking disabled):
@@ -47,6 +48,7 @@ def make_bundle(ledger, public_key_path, out_zip) -> str:
         "public_key.pub": public_key_path.read_bytes(),
         "verify.py": (HERE / "verify.py").read_bytes(),
         "purepy.py": (HERE / "purepy.py").read_bytes(),
+        "checkpoint.py": (HERE / "checkpoint.py").read_bytes(),
     }
     files["README.txt"] = README.format(key_id=result["key_id"], expected=summary.splitlines()[0]).encode()
     files["SHA256SUMS"] = "".join(

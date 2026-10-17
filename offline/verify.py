@@ -4,6 +4,7 @@
 Usage:
     python3 verify.py <receipts.jsonl> <public_key.pub> [--json] [--allow-partial]
                       [--head SEQ:RECEIPT_HASH] [--against EARLIER.jsonl]
+                      [--checkpoint FILE.ckpt ...] [--pins pins.json] [--memory memory.json]
 
 Checks every receipt:
   - receipt_hash recomputes (SHA-256 and BLAKE3 over the canonical body)
@@ -17,9 +18,18 @@ Optional comparison with something you recorded earlier, held outside this file:
                             receipt at SEQ (history rewritten or re-signed).
   --against EARLIER.jsonl   an earlier export of the same ledger. Flags any receipt
                             that was dropped, changed or re-signed since that copy.
+  --checkpoint FILE.ckpt    a signed checkpoint (repeatable), trusted only if its key is
+                            pinned (--pins, else the public key given). Flags truncation
+                            (TRUNCATED), a different head (SPLIT_VIEW) and a rebuilt
+                            ledger (REPLACED).
+  --memory memory.json      local memory of the highest head seen per origin and key.
+                            Flags a ledger below it (ROLLBACK) or contradicting it
+                            (SPLIT_VIEW); remembers the new head after a clean run.
 Without one of these, a rewrite by someone holding the signing key, or a cut at the
-end of the file, still verifies: the file cannot show it on its own.
-Exit 0 when everything verifies, 1 otherwise.
+end of the file, still verifies: the file cannot show it on its own, and the output
+says so (NO_REFERENCE).
+Every problem carries a stable code (--json for machine-readable output).
+Exit 0 when everything verifies, 1 otherwise, 2 for a usage error.
 
 Standalone by design: standard library only, using the `blake3` and
 `cryptography` packages when installed and the bundled pure-Python
@@ -96,8 +106,40 @@ def load_public_key(path) -> bytes:
     return raw
 
 
+# Outcome codes for ledger problems. Stable: scripts and tests match on them.
+# Checkpoint and memory codes (CKPT_*, ROLLBACK, SPLIT_VIEW, ...) are in checkpoint.py.
+NOT_JSON = "NOT_JSON"
+NOT_RECEIPT = "NOT_RECEIPT"
+RECEIPT_VERSION = "RECEIPT_VERSION"
+RECEIPT_EDITED = "RECEIPT_EDITED"
+PAYLOAD_MISMATCH = "PAYLOAD_MISMATCH"
+WRONG_KEY = "WRONG_KEY"
+SIGNATURE_INVALID = "SIGNATURE_INVALID"
+SEQ_NOT_INTEGER = "SEQ_NOT_INTEGER"
+SEQ_DUPLICATE = "SEQ_DUPLICATE"
+SEQ_GAP = "SEQ_GAP"
+SEQ_ORDER = "SEQ_ORDER"
+CHAIN_LINK = "CHAIN_LINK"
+CHAIN_START = "CHAIN_START"
+LEDGER_EMPTY = "LEDGER_EMPTY"
+TRUNCATED = "TRUNCATED"
+SPLIT_VIEW = "SPLIT_VIEW"
+NOT_COVERED = "NOT_COVERED"
+REFERENCE_UNREADABLE = "REFERENCE_UNREADABLE"
+NO_REFERENCE = "NO_REFERENCE"
+
+# Printed by every run that had nothing to compare against; docs/OFFLINE.md and
+# docs/THREAT_MODEL.md carry the same sentence.
+STATELESS_NOTICE = ("This run had no known head, checkpoint or verifier memory, "
+                    "so it cannot detect rollback or truncation.")
+
+
 def _is_seq(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _issue(issues, line, seq, code, problem):
+    issues.append({"line": line, "seq": seq, "code": code, "problem": problem})
 
 
 def _compare_to_record(issues, hashes, last_seq, record, label):
@@ -105,30 +147,42 @@ def _compare_to_record(issues, hashes, last_seq, record, label):
 
     record: {seq: receipt_hash} you held before. hashes: {seq: receipt_hash} in this ledger.
     """
-    def add(problem):
-        issues.append({"line": 0, "seq": None, "problem": problem})
-
     missing = [q for q in sorted(record) if q not in hashes]
     if missing and last_seq is not None and missing[0] > last_seq:
-        add(f"truncated: ledger ends at seq {last_seq} but {label} reaches seq {max(record)} "
-            f"({len(missing)} receipt(s) cut from the end)")
+        _issue(issues, 0, None, TRUNCATED,
+               f"truncated: ledger ends at seq {last_seq} but {label} reaches seq {max(record)} "
+               f"({len(missing)} receipt(s) cut from the end)")
     elif missing:
-        add(f"{label} has seq {missing[0]}, which is not in this ledger (excerpt or deleted receipts)")
+        _issue(issues, 0, None, NOT_COVERED,
+               f"{label} has seq {missing[0]}, which is not in this ledger (excerpt or deleted receipts)")
     changed = [q for q in sorted(record) if q in hashes and hashes[q] != record[q]]
     if changed:
-        add(f"history rewritten or re-signed: seq {changed[0]} has a different receipt_hash than {label}"
-            + (f" ({len(changed)} receipts differ)" if len(changed) > 1 else ""))
+        _issue(issues, 0, None, SPLIT_VIEW,
+               f"history rewritten or re-signed: seq {changed[0]} has a different receipt_hash than {label}"
+               + (f" ({len(changed)} receipts differ)" if len(changed) > 1 else ""))
+
+
+def ledger_origin(kid: str, genesis_receipt_hash) -> str | None:
+    """offline/<key_id>/<instance>: the instance is the first 16 hex of receipt 1's hash."""
+    if not isinstance(genesis_receipt_hash, str) or ":" not in genesis_receipt_hash:
+        return None
+    return f"offline/{kid}/{genesis_receipt_hash.split(':')[0][:16]}"
 
 
 def verify_ledger(lines, public_key: bytes, allow_partial: bool = False,
-                  head=None, against=None) -> dict:
-    """Return {"ok", "count", "issues": [{"line", "seq", "problem"}], "key_id"}.
+                  head=None, against=None, checkpoints=None, pins=None, memory=None) -> dict:
+    """Verify a ledger, then compare it with whatever was recorded outside it.
 
-    head: (seq, receipt_hash) recorded outside the ledger. against: lines of an earlier
-    export of the same ledger. Either one lets truncation and re-signing be reported.
+    head: (seq, receipt_hash) noted by hand. against: lines of an earlier export.
+    checkpoints: [(label, stored bytes)] checked with `pins` ({key_id: public key}).
+    memory: a verifier memory dict (checkpoint.load_memory); compared, not changed.
+
+    Returns {"ok", "count", "issues": [{"line", "seq", "code", "problem"}],
+    "notices": [{"code", "message"}], "key_id", "origin", "head", "references", "remember"}.
+    Notices never fail a run; issues always do.
     """
     kid = key_id(public_key)
-    issues = []
+    issues, notices, references, remember = [], [], [], []
     prev = None
     count = 0
     hashes = {}
@@ -139,63 +193,67 @@ def verify_ledger(lines, public_key: bytes, allow_partial: bool = False,
         try:
             r = json.loads(line)
         except json.JSONDecodeError:
-            issues.append({"line": n, "seq": None, "problem": "not valid JSON"})
+            _issue(issues, n, None, NOT_JSON, "not valid JSON")
             prev = None
             continue
         if not isinstance(r, dict):
-            issues.append({"line": n, "seq": None, "problem": "line is not a receipt object"})
+            _issue(issues, n, None, NOT_RECEIPT, "line is not a receipt object")
             prev = None
             continue
         seq = r.get("seq")
         if _is_seq(seq):
             if seq in hashes:
-                issues.append({"line": n, "seq": seq, "problem": f"seq {seq} appears more than once"})
+                _issue(issues, n, seq, SEQ_DUPLICATE, f"seq {seq} appears more than once")
             hashes[seq] = r.get("receipt_hash")
         elif seq is not None or "seq" in r:
-            issues.append({"line": n, "seq": None, "problem": f"seq {seq!r} is not an integer"})
+            _issue(issues, n, None, SEQ_NOT_INTEGER, f"seq {seq!r} is not an integer")
 
-        def bad(problem):
-            issues.append({"line": n, "seq": seq, "problem": problem})
+        def bad(code, problem):
+            _issue(issues, n, seq, code, problem)
 
         if r.get("v") != FORMAT_VERSION:
-            bad(f"unknown format version {r.get('v')!r}")
+            bad(RECEIPT_VERSION, f"unknown format version {r.get('v')!r}")
         if dual_hash(canonical(receipt_body(r))) != r.get("receipt_hash"):
-            bad("receipt_hash does not match the receipt body (edited receipt)")
+            bad(RECEIPT_EDITED, "receipt_hash does not match the receipt body (edited receipt)")
         if r.get("payload_mode") == "full" and dual_hash(canonical(r.get("payload"))) != r.get("payload_digest"):
-            bad("payload does not match payload_digest")
+            bad(PAYLOAD_MISMATCH, "payload does not match payload_digest")
         if r.get("key_id") != kid:
-            bad(f"signed by key {r.get('key_id')}, not {kid}")
+            bad(WRONG_KEY, f"signed by key {r.get('key_id')}, not {kid}")
         try:
             sig = base64.b64decode(r.get("signature", ""), validate=True)
         except (ValueError, TypeError):
             sig = b""
         if not signature_ok(public_key, str(r.get("receipt_hash", "")).encode(), sig):
-            bad("signature does not verify")
+            bad(SIGNATURE_INVALID, "signature does not verify")
 
         if prev is None:
             if count == 1 and not allow_partial:
                 if seq != 1:
-                    bad(f"chain starts at seq {seq}, expected 1 (receipts missing before it)")
+                    bad(CHAIN_START, f"chain starts at seq {seq}, expected 1 (receipts missing before it)")
                 if r.get("prev_hash") != GENESIS:
-                    bad("first receipt does not link to genesis")
+                    bad(CHAIN_START, "first receipt does not link to genesis")
         elif not _is_seq(prev.get("seq")) or not _is_seq(seq):
-            bad("seq is not an integer, so the chain position cannot be checked")
+            bad(SEQ_NOT_INTEGER, "seq is not an integer, so the chain position cannot be checked")
         else:
             if seq != prev.get("seq", 0) + 1:
                 expected = prev.get("seq", 0) + 1
                 if seq > expected:
-                    bad(f"seq jumps {prev.get('seq')} -> {seq}: {seq - expected} receipt(s) missing")
+                    bad(SEQ_GAP, f"seq jumps {prev.get('seq')} -> {seq}: {seq - expected} receipt(s) missing")
                 else:
-                    bad(f"seq {seq} after {prev.get('seq')}: out of order or duplicated")
+                    bad(SEQ_ORDER, f"seq {seq} after {prev.get('seq')}: out of order or duplicated")
             if r.get("prev_hash") != prev.get("receipt_hash"):
-                bad("prev_hash does not link to the previous receipt")
+                bad(CHAIN_LINK, "prev_hash does not link to the previous receipt")
         prev = r
     if count == 0:
-        issues.append({"line": 0, "seq": None, "problem": "ledger is empty"})
+        _issue(issues, 0, None, LEDGER_EMPTY, "ledger is empty")
     last_seq = max(hashes) if hashes else None
+    origin = ledger_origin(kid, hashes.get(1))
+
     if head is not None:
+        references.append("known head")
         _compare_to_record(issues, hashes, last_seq, {head[0]: head[1]}, "the head you recorded")
     if against is not None:
+        references.append("earlier export")
         earlier = {}
         for line in against:
             if line.strip():
@@ -204,9 +262,59 @@ def verify_ledger(lines, public_key: bytes, allow_partial: bool = False,
                     if _is_seq(e.get("seq")):
                         earlier[e["seq"]] = e.get("receipt_hash")
                 except (json.JSONDecodeError, AttributeError):
-                    issues.append({"line": 0, "seq": None, "problem": "the earlier ledger has an unreadable line"})
+                    _issue(issues, 0, None, REFERENCE_UNREADABLE, "the earlier ledger has an unreadable line")
         _compare_to_record(issues, hashes, last_seq, earlier, "the earlier export")
-    return {"ok": not issues, "count": count, "issues": issues, "key_id": kid}
+
+    if checkpoints or memory is not None:
+        try:
+            from offline import checkpoint as ck
+        except ImportError:  # running from an evaluator bundle
+            import checkpoint as ck
+    for label, data in checkpoints or []:
+        references.append(f"checkpoint {label}")
+        try:
+            c = ck.verify(data, pins if pins is not None else ck.pin_one(public_key))
+        except ck.CheckpointError as e:
+            _issue(issues, 0, None, e.code, f"checkpoint {label}: {e.message}")
+            continue
+        if origin is None:
+            notices.append({"code": "ORIGIN_UNKNOWN", "message": f"checkpoint {label}: this excerpt has no receipt 1, "
+                            "so its origin cannot be confirmed; compared by seq only"})
+        elif c["origin"] != origin:
+            parts = c["origin"].split("/")
+            if parts[0] == "offline" and parts[1] == kid:
+                _issue(issues, 0, None, ck.REPLACED,
+                       f"replaced: checkpoint {label} is for {c['origin']}, but this ledger begins with a different "
+                       f"receipt 1 ({origin}): the whole ledger was rebuilt")
+            else:
+                _issue(issues, 0, None, ck.ORIGIN_MISMATCH,
+                       f"checkpoint {label} is for {c['origin']}, not this ledger ({origin})")
+            continue
+        _compare_to_record(issues, hashes, last_seq, {c["seq"]: c["head"]}, f"checkpoint {label}")
+        remember.append((c["origin"], c["key_id"], c["seq"], c["head"]))
+
+    if memory is not None and origin is not None:
+        held = ck.remembered(memory, origin, kid)
+        if held is not None:
+            references.append("verifier memory")
+            if last_seq is not None and last_seq < held["seq"]:
+                _issue(issues, 0, None, ck.ROLLBACK,
+                       f"rollback: ledger ends at seq {last_seq}, but this verifier already saw seq {held['seq']} "
+                       f"of {origin} (on {held.get('seen', '?')})")
+            elif hashes.get(held["seq"]) != held["head"]:
+                _issue(issues, 0, None, ck.SPLIT_VIEW,
+                       f"split view: seq {held['seq']} has a different receipt_hash than the one this verifier saw "
+                       f"before for {origin}; two different histories exist")
+        else:
+            notices.append({"code": "MEMORY_FIRST_SEEN", "message": f"first time this verifier sees {origin}; "
+                            "its head is remembered for the next run"})
+    if not references:
+        notices.append({"code": NO_REFERENCE, "message": STATELESS_NOTICE})
+    if origin is not None and last_seq is not None:
+        remember.append((origin, kid, last_seq, hashes[last_seq]))
+    return {"ok": not issues, "count": count, "issues": issues, "notices": notices, "key_id": kid,
+            "origin": origin, "head": {"seq": last_seq, "receipt_hash": hashes.get(last_seq)},
+            "references": references, "remember": remember}
 
 
 def backend() -> str:
@@ -216,27 +324,36 @@ def backend() -> str:
 
 def report(result: dict) -> str:
     if result["ok"]:
-        return f"VERIFIED: {result['count']} receipts, chain intact, signed by key {result['key_id']}"
-    out = [f"FAILED: {len(result['issues'])} problem(s) in {result['count']} receipts"]
-    out += [f"  line {i['line']} (seq {i['seq']}): {i['problem']}" for i in result["issues"]]
+        out = [f"VERIFIED: {result['count']} receipts, chain intact, signed by key {result['key_id']}"]
+    else:
+        out = [f"FAILED: {len(result['issues'])} problem(s) in {result['count']} receipts"]
+        out += [f"  line {i['line']} (seq {i['seq']}) {i.get('code', '')}: {i['problem']}" for i in result["issues"]]
+    out += [f"NOTICE {n['code']}: {n['message']}" for n in result.get("notices", [])]
     return "\n".join(out)
 
 
+def _take_values(args, flag):
+    """Remove every `flag VALUE` from args and return the VALUEs."""
+    values = []
+    while flag in args:
+        i = args.index(flag)
+        if i + 1 >= len(args):
+            raise SystemExit(f"{flag} needs a value")
+        values.append(args[i + 1])
+        del args[i:i + 2]
+    return values
+
+
 def _take_value(args, flag):
-    """Remove `flag VALUE` from args and return VALUE, or None if absent."""
-    if flag not in args:
-        return None
-    i = args.index(flag)
-    if i + 1 >= len(args):
-        raise SystemExit(f"{flag} needs a value")
-    value = args[i + 1]
-    del args[i:i + 2]
-    return value
+    values = _take_values(args, flag)
+    return values[-1] if values else None
 
 
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     head_arg, against_arg = _take_value(args, "--head"), _take_value(args, "--against")
+    checkpoint_args, pins_arg = _take_values(args, "--checkpoint"), _take_value(args, "--pins")
+    memory_arg = _take_value(args, "--memory")
     as_json = "--json" in args
     allow_partial = "--allow-partial" in args
     args = [a for a in args if not a.startswith("--")]
@@ -250,8 +367,26 @@ def main(argv=None) -> int:
             raise SystemExit("--head must be SEQ:RECEIPT_HASH, for example 42:<sha256>:<blake3>")
         head = (int(seq), digest)
     against = Path(against_arg).read_text().splitlines() if against_arg else None
-    result = verify_ledger(Path(args[0]).read_text().splitlines(), load_public_key(args[1]), allow_partial,
-                           head=head, against=against)
+    public_key = load_public_key(args[1])
+    pins = memory = None
+    if checkpoint_args or memory_arg or pins_arg:
+        try:
+            from offline import checkpoint as ck
+        except ImportError:  # running from an evaluator bundle
+            import checkpoint as ck
+        try:
+            pins = ck.load_pins(pins_arg) if pins_arg else None
+            memory = ck.load_memory(memory_arg) if memory_arg else None
+        except ck.CheckpointError as e:
+            print(f"error {e.code}: {e.message}", file=sys.stderr)
+            return 2
+    checkpoints = [(c, Path(c).read_bytes()) for c in checkpoint_args]
+    result = verify_ledger(Path(args[0]).read_text().splitlines(), public_key, allow_partial,
+                           head=head, against=against, checkpoints=checkpoints, pins=pins, memory=memory)
+    if result["ok"] and memory is not None:
+        for origin, kid, seq, h in result["remember"]:
+            ck.remember(memory, origin, kid, seq, h)
+        ck.save_memory(memory_arg, memory)
     print(json.dumps(result, indent=2) if as_json else report(result))
     return 0 if result["ok"] else 1
 

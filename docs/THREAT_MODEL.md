@@ -7,7 +7,7 @@ There are two receipt systems here. They have different properties, so each row 
 | | Offline kit (`offline/`) | Hosted sandbox (`aiflightrecorder-1.onrender.com`) |
 |---|---|---|
 | Who hashes | You, on your machine | The server |
-| Who signs | You, with your Ed25519 key (`signer.pem`) | Nobody. The server does not sign receipts. Your submission carries your signature, which a pilot tenant's key verifies; the public sandbox accepts any non-empty signature. |
+| Who signs | You, with your Ed25519 key (`signer.pem`), receipts and checkpoints | Receipts: nobody. The server does not sign receipts. Your submission carries your signature, which a pilot tenant's key verifies; the public sandbox accepts any non-empty signature. Checkpoints (`get_checkpoint`): a server key used only for checkpoints, once an operator has configured it; until then none are signed. |
 | Chain link | `prev_hash` on every receipt, `seq` contiguous from 1 | `tenant_seq` and `prev_attestation_hash` on each attestation, per tenant |
 | Verification | Public key + `receipts.jsonl`, no network | `receipt_body` saved from the response + the payload you sent, no network; or ask the server |
 | Ledger persistence | Your file | Temporary on the free tier (`"persistence": "ephemeral"`) |
@@ -40,11 +40,29 @@ Nothing in the product prevents this and nothing in the ledger alone reveals it.
 **What closes the gap is a reference the administrator cannot also rewrite**: the latest `seq` and `receipt_hash` (the head), or a signed checkpoint of it, stored somewhere else: a counterparty, a second key held by another person, a printed or emailed record. The verifier can then say so:
 
 ```bash
+python3 -m offline verify receipts.jsonl signer.pub --checkpoint held_by_partner.ckpt
 python3 -m offline verify receipts.jsonl signer.pub --head 42:<receipt_hash>
 python3 -m offline verify receipts.jsonl signer.pub --against last_months_export.jsonl
+python3 -m offline verify receipts.jsonl signer.pub --memory verifier_memory.json
 ```
 
-Both report `truncated: ledger ends at seq N` when receipts were cut from the end, and `history rewritten or re-signed: seq N` when a receipt differs from the one you recorded. This works only if you recorded the head or export at a time you trust and kept it out of the administrator's reach.
+They report `TRUNCATED` when receipts were cut from the end, `SPLIT_VIEW` when a receipt differs from the one recorded, `REPLACED` when the ledger was rebuilt from receipt 1, and `ROLLBACK` when the ledger is below a head the verifier remembers.
+
+What is implemented today, and what is not:
+
+- **Implemented:** signed checkpoints of the head (the offline kit writes one after every `seal`; the pilot signs one on request with `get_checkpoint` once its key is configured), key pinning with explicit rotation, comparison against a checkpoint, a known head, an earlier export or local verifier memory, and comparison of two holders' checkpoints.
+- **Procedure, not software:** getting the checkpoint to someone other than the operator. Nothing in this repository sends it; `docs/OFFLINE.md` describes the hand-off.
+- **Not implemented:** an independent timestamp of each checkpoint.
+
+This works only if the reference was recorded at a time you trust and kept out of the administrator's reach. A run with none of these references cannot see a cut or a rewrite and prints, in every such run:
+
+> This run had no known head, checkpoint or verifier memory, so it cannot detect rollback or truncation.
+
+Limits of the references themselves:
+
+- **Split view needs two holders who compare.** An operator can show one history to one holder and another to a second; only `checkpoint compare` between them, or both checking one ledger, shows it.
+- **Verifier memory can be deleted.** It is a local file; delete it and the verifier forgets every head it saw.
+- **Anything newer than the last stored checkpoint** can still be rewritten by the key holder without detection, until the next checkpoint reaches a holder.
 
 ## 1. What is detectable
 
@@ -59,8 +77,8 @@ Given a ledger (offline) or a saved `receipt_body` (hosted), a verifier detects:
 ## 2. What is not detectable
 
 - **An event that was never sealed.** A log that omitted an event before sealing produces a valid chain. Only rules about what the log should contain can catch this. The verifier proves the chain is unchanged since sealing, not that sealing was complete or truthful.
-- **Truncation at the tail, from the file alone.** If the last N receipts are removed, the remaining chain still verifies. Detection needs a reference point held outside the ledger: pass the head you recorded (`verify --head`) or an earlier export (`verify --against`).
-- **Ledger rewrite by the key holder.** Anyone holding `signer.pem` can delete the ledger and seal a different history that verifies. The key proves who sealed, not that the history is the only one. Protect the private key and record the chain head outside the ledger when this matters (section 0).
+- **Truncation at the tail, from the file alone.** If the last N receipts are removed, the remaining chain still verifies. Detection needs a reference point held outside the ledger: pass the head you recorded (`verify --head`) an earlier export (`verify --against`), or a signed checkpoint held by someone else.
+- **Ledger rewrite by the key holder.** Anyone holding `signer.pem` can delete the ledger and seal a different history that verifies. The key proves who sealed, not that the history is the only one. Protect the private key and hand each checkpoint to someone outside your control when this matters (section 0).
 - **Wrong or fabricated inputs.** A receipt binds bytes, not truth. A sensor reading sealed correctly is still a sensor reading that may be wrong.
 - **Hosted ledger reset.** After a free-tier restart, the server cannot find earlier receipts and says so (`reason: ledger_reset`). That is reported as unknown (`chain_intact: null`), not as tampering, because the server no longer has evidence either way. Your saved `receipt_body` still verifies offline.
 - **Hosted receipts without a saved body.** If you kept only `receipt_hash`, the only check is to ask the issuing server. That is a trust-the-server check and `verify.py` labels it as such.

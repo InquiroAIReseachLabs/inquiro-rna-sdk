@@ -4,6 +4,7 @@
 Usage:
     python3 scripts/ingest_log.py LOG --ledger receipts.jsonl --key signer.pem
                                   [--keygen signer.pub] [--sort] [--digest-only] [--append]
+                                  [--no-checkpoint]
 
 Each row becomes one receipt, in file order (or time order with --sort).
   timestamp   "timestamp", "ts" or "time" (ISO 8601, required)
@@ -12,6 +13,8 @@ Each row becomes one receipt, in file order (or time order with --sort).
               merged in; numeric strings in CSV become numbers
 --digest-only seals only the SHA-256:BLAKE3 digest of each payload, so the
 log contents never enter the ledger. --keygen creates the key pair first.
+After the last row, a signed checkpoint of the ledger head is written to
+<ledger stem>.checkpoints/<seq>.ckpt (skip with --no-checkpoint).
 Then verify:  python3 -m offline verify receipts.jsonl signer.pub
 """
 from __future__ import annotations
@@ -26,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from offline.checkpoint import CheckpointError, for_ledger, store  # noqa: E402
 from offline.seal import LedgerRefused, Sealer, generate_keypair, load_private_key  # noqa: E402
 from offline.verify import canonical, dual_hash  # noqa: E402
 
@@ -97,6 +101,7 @@ def main() -> int:
     ap.add_argument("--sort", action="store_true", help="seal in timestamp order instead of file order")
     ap.add_argument("--digest-only", action="store_true", help="seal payload digests, not payloads")
     ap.add_argument("--append", action="store_true", help="continue an existing ledger")
+    ap.add_argument("--no-checkpoint", action="store_true", help="do not write a checkpoint after sealing")
     a = ap.parse_args()
     if Path(a.ledger).exists() and not a.append:
         raise SystemExit(f"FAIL: {a.ledger} exists; pass --append to continue it")
@@ -109,6 +114,12 @@ def main() -> int:
     print(f"sealed {len(receipts)} receipts into {a.ledger} "
           f"(seq {receipts[0]['seq']}-{receipts[-1]['seq']}, key {receipts[0]['key_id']})" if receipts
           else "no rows")
+    if receipts and not a.no_checkpoint:
+        try:
+            path, _ = store(a.ledger, for_ledger(a.ledger, load_private_key(a.key)))
+        except CheckpointError as e:
+            raise SystemExit(f"sealed, but no checkpoint: {e}")
+        print(f"checkpoint {path}")
     return 0
 
 
