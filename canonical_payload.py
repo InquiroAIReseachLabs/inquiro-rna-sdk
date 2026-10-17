@@ -1,4 +1,4 @@
-"""Canonical JSON for RNA attestation payloads. Mock server and verifier must use the same bytes."""
+"""Canonical JSON for RNA attestation payloads. Server and verifier must use the same bytes."""
 from __future__ import annotations
 
 import json

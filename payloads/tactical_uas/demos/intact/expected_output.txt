@@ -1,2 +1,0 @@
-chain:   VERIFIED: 9 receipts, chain intact, signed by key 274ab009090b7cfa
-mission: OK: every detection has an operator decision; link loss handled

@@ -16,16 +16,16 @@ Each `payloads/*.json` file is a top-level object with:
 
 - `event_type` (string)
 - `device_id` (string)
-- `payload` (object) — event-specific fields
+- `payload` (object): event-specific fields
 - `timestamp` (ISO 8601 string)
 - `signature` (base64 string; demo placeholder in samples)
 
 ## What the receipt proves
 
-Each successful `submit_attestation` returns a `receipt_hash` (`sha256_hex:blake3_hex`) over the server's stored record (`receipt_body`), which includes `attestation_payload_hash`, the dual hash of your `payload`. Independent verification recomputes `receipt_hash` from `receipt_body` and `attestation_payload_hash` from the payload you sent (see [RECEIPT_ANATOMY.md](RECEIPT_ANATOMY.md)). On the mock server the hash is over the attestation body itself.
+Each successful `submit_attestation` returns a `receipt_hash` (`sha256_hex:blake3_hex`) over the server's stored record (`receipt_body`), which includes `attestation_payload_hash`, the dual hash of your `payload`. Independent verification recomputes `receipt_hash` from `receipt_body` and `attestation_payload_hash` from the payload you sent (see [RECEIPT_ANATOMY.md](RECEIPT_ANATOMY.md)).
 
 ## Regulatory framing (high level)
 
 Receipts are designed to support evidence and record-keeping requirements, including authentication of electronic records under rules such as FRE 901(b)(9). This is not legal advice and does not by itself establish compliance or admissibility in any jurisdiction.
 
-For your own use case, consult counsel. Wording rules for any public copy: [LEGAL_LANGUAGE.md](LEGAL_LANGUAGE.md).
+How a receipt fits a particular use case depends on the system and the rules that apply to it; [THREAT_MODEL.md](THREAT_MODEL.md) states what a receipt can and cannot show.

@@ -1,9 +1,0 @@
-{
-  "event_type": "operator_override",
-  "payload": {
-    "operator_id": "OP-01",
-    "detection_seq": 5,
-    "decision": "override",
-    "reason": "false_positive_shadow"
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "event_type": "link_loss",
-  "payload": {
-    "link": "c2_primary",
-    "last_rssi_dbm": -97,
-    "failsafe_timer_s": 10
-  }
-}

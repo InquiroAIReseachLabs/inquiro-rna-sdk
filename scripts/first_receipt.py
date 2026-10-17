@@ -93,11 +93,11 @@ def main() -> int:
         sys.exit(f"FAIL: server error {resp['error']}")
     res = lift(resp)
 
-    # The SDK mock returns the full receipt; the live server returns receipt_hash only.
-    mock_receipt = res.get("receipt") if isinstance(res.get("receipt"), dict) else None
-    if mock_receipt:
-        receipt_hash = f"{mock_receipt['sha256']}:{mock_receipt['blake3']}"
-        accepted, position = True, mock_receipt.get("chain_position")
+    # Some servers return the full receipt; the hosted sandbox returns receipt_hash only.
+    full_receipt = res.get("receipt") if isinstance(res.get("receipt"), dict) else None
+    if full_receipt:
+        receipt_hash = f"{full_receipt['sha256']}:{full_receipt['blake3']}"
+        accepted, position = True, full_receipt.get("chain_position")
     else:
         receipt_hash = res.get("receipt_hash") or ""
         accepted, position = bool(res.get("accepted")), res.get("chain_position")
@@ -118,8 +118,8 @@ def main() -> int:
 
     record = {"endpoint": url, "attestation": att, "receipt_hash": receipt_hash,
               "chain_position": position, "accepted": accepted}
-    if mock_receipt:
-        record["receipt"] = mock_receipt
+    if full_receipt:
+        record["receipt"] = full_receipt
     if isinstance(res.get("receipt_body"), dict):
         # The stored record: verify.py recomputes receipt_hash from it offline.
         record["receipt_body"] = res["receipt_body"]

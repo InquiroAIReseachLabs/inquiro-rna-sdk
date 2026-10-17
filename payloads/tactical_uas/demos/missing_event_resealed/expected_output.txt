@@ -1,3 +1,0 @@
-chain:   VERIFIED: 8 receipts, chain intact, signed by key 274ab009090b7cfa
-mission: FAILED
-  ai_detection seq 5 has no operator decision
