@@ -1,7 +1,0 @@
-{
-  "name": "inquiro-rna-verifier-js",
-  "private": true,
-  "dependencies": {
-    "blake3": "2.1.7"
-  }
-}

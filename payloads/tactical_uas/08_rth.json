@@ -1,8 +1,0 @@
-{
-  "event_type": "rth",
-  "payload": {
-    "trigger": "link_loss_failsafe",
-    "home_id": "PAD-1",
-    "altitude_m": 80
-  }
-}

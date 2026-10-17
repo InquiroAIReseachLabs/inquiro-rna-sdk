@@ -45,7 +45,7 @@ It reports any receipt that was edited, deleted, inserted, duplicated or reorder
 
 Given something you recorded elsewhere, it reports more. `--head SEQ:HASH` (the head you noted) and `--against EARLIER.jsonl` (an earlier export) flag a ledger that now ends before the recorded point (`truncated`) and a receipt that differs from the recorded one (`history rewritten or re-signed`). Without them, a tail cut or a rewrite by someone holding the signing key still verifies; see [THREAT_MODEL.md](THREAT_MODEL.md) section 0.
 
-It cannot tell you an event was never sealed: a log that omitted an event before sealing produces a valid chain. Domain rules catch that; see `scripts/run_scenario.py` and the `missing_event_resealed` demo. Anyone holding the private key can produce a valid chain, so protect the key and check the key id out of band.
+It cannot tell you an event was never sealed: a log that omitted an event before sealing produces a valid chain. Only rules about what the log should contain can catch that. Anyone holding the private key can produce a valid chain, so protect the key and check the key id out of band.
 
 ## Hash-only (digest) mode
 
@@ -53,8 +53,8 @@ It cannot tell you an event was never sealed: a log that omitted an event before
 
 ## Running with networking disabled
 
-The test suite proves the kit needs no network: every test fails if it opens a socket, and CI runs the suite inside `unshare -rn` (an empty network namespace):
+The kit makes no network calls. To see that for yourself on Linux, run any command inside an empty network namespace:
 
 ```bash
-unshare -rn python3 -m pytest tests -q
+unshare -rn python3 -m offline verify receipts.jsonl signer.pub
 ```

@@ -1,7 +1,7 @@
 """
 Verify an RNA receipt.
 
-- Mock receipts (payload + sha256 + blake3): recompute both hashes offline.
+- Receipts that carry the payload and both hashes (payload + sha256 + blake3): recompute both hashes offline.
 - Live flight recorder receipts with receipt_body (servers from October 2026):
   recompute receipt_hash offline from the stored record,
   dual_hash(json.dumps(body minus "payload_hash", sort_keys=True)), and check

@@ -1,8 +1,7 @@
 """Pure-Python BLAKE3 (default 32-byte hash) and Ed25519 signature verification.
 
 Fallbacks for machines without the `blake3` or `cryptography` packages, so an
-evaluator can verify receipts with nothing but Python 3.9+. Slow but exact;
-tests/test_offline.py checks both against the native libraries.
+evaluator can verify receipts with nothing but Python 3.9+. Slow but exact.
 
 BLAKE3: port of the reference implementation (github.com/BLAKE3-team/BLAKE3,
 reference_impl). Ed25519: verification per RFC 8032 section 5.1.7.

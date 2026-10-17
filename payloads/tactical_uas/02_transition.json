@@ -1,9 +1,0 @@
-{
-  "event_type": "transition",
-  "payload": {
-    "from_mode": "manual",
-    "to_mode": "autonomous_waypoint",
-    "altitude_m": 120,
-    "airspeed_mps": 18.0
-  }
-}

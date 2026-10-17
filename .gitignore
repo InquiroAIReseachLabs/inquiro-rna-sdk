@@ -1,12 +1,8 @@
-legacy-internal/
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 .env
 *.log
-.pytest_cache/
-.mypy_cache/
 .DS_Store
 Thumbs.db
-node_modules/
