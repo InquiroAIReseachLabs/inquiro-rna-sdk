@@ -6,9 +6,13 @@ Related: the legal wording rules are in [`docs/LEGAL_LANGUAGE.md`](docs/LEGAL_LA
 
 ## 1. Merge the close-out pull requests
 
-- [ ] **Merge the three close-out PRs** (SDK, website, AIFlightRecorder; links at the end of this file).
-  Click path: GitHub → each repository → Pull requests → the close-out PR → wait until every check is green → **Merge pull request** → **Confirm merge**.
-  Expected: three merged PRs. Merging the website PR starts the website's `deploy` workflow (GitHub → Inquiro-Website- → Actions → deploy), which should finish green and publish the new wording on inquiroresearchlabs.ai.
+- [x] **Merge the three close-out PRs** (SDK, website, AIFlightRecorder; links at the end of this file). Done 17 October, 02:02 to 02:03 UTC. The website's `deploy` workflow finished green, so the new wording and the regulatory timeline layout fix are live.
+- [ ] **Merge the two follow-up PRs** (pushed after those merges landed; links at the end of this file).
+  - AIFlightRecorder "ci(image): stop the persistent-ledger step failing with SIGPIPE". The `image` job's persistent-ledger step fails at random with exit code 141: it was red on the PR 53 merge and green on the PR 54 merge by chance. The fault is in the CI script, not the product.
+  - inquiro-rna-sdk: this file's update.
+
+  Click path: GitHub → the repository → Pull requests → the PR → wait until every check is green → **Merge pull request** → **Confirm merge**.
+  Expected: both merged, CI green on `main`.
 - [ ] **Decide on the two open dependabot PRs** in Inquiro-Website-: #418 (sharp and wrangler) and #420 (tooling group), open since September.
   Click path: Pull requests → each PR → Checks tab → if green, **Merge pull request**; if not, **Close pull request**.
   Expected: no open pull requests left in the three repositories.
@@ -25,6 +29,9 @@ Related: the legal wording rules are in [`docs/LEGAL_LANGUAGE.md`](docs/LEGAL_LA
 - [ ] **Record the plan and the disk.**
   Click path: flight-recorder-pilot → **Settings** → Instance Type; then **Disks** in the left menu.
   Expected: either a paid instance with a disk mounted at `/var/data` (then `/health` says `"persistence": "persistent"`), or the free plan with no disk (then it says `"ephemeral"` and the ledger resets on restart). Both are fine; the public copy already says which applies.
+- [ ] **Run the scheduled live check once by hand.**
+  Click path: GitHub → inquiro-rna-sdk → Actions → **Verify RNA Receipts (live API)** → **Run workflow** → branch `main` → **Run workflow**.
+  Expected: green within a few minutes. Its last scheduled run (6 July) failed against the retired host; it runs daily at 06:00 UTC, and **Live health check** daily at 07:17 UTC.
 - [ ] **Confirm the image is the hardened pilot build.**
   Click path: flight-recorder-pilot → **Events** → the latest deploy → it names the commit. Expected: the commit is the head of AIFlightRecorder `main` and the build used `pilot/Dockerfile`.
 
@@ -127,6 +134,7 @@ The audit lists these as `NEEDS HUMAN CHECK` because the sites refuse automated 
 
 ## Close-out pull requests
 
-- inquiro-rna-sdk: https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk/pull/14
-- Inquiro-Website-: InquiroAIReseachLabs/Inquiro-Website- pull request 438 (private repository)
-- AIFlightRecorder: InquiroAIReseachLabs/AIFlightRecorder pull request 54 (private repository)
+- inquiro-rna-sdk: https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk/pull/14 (merged)
+- Inquiro-Website-: InquiroAIReseachLabs/Inquiro-Website- pull request 438 (private repository; merged)
+- AIFlightRecorder: InquiroAIReseachLabs/AIFlightRecorder pull request 54 (private repository; merged)
+- Follow-ups, open: the inquiro-rna-sdk PR carrying this update, and the AIFlightRecorder CI fix PR (both titled as in section 1).
