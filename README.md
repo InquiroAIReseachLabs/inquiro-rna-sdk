@@ -62,7 +62,7 @@ On Windows, use `py -3` in place of `python3`; see [docs/WINDOWS.md](docs/WINDOW
 ## Documentation
 
 - [docs/QUICKSTART.md](docs/QUICKSTART.md): the hosted path step by step
-- [docs/OFFLINE.md](docs/OFFLINE.md): offline kit commands and receipt format
+- [docs/OFFLINE.md](docs/OFFLINE.md): offline kit commands, receipt format, signed checkpoints and key pinning
 - [docs/EVENT_TYPES.md](docs/EVENT_TYPES.md): event types and payloads
 - [docs/RECEIPT_ANATOMY.md](docs/RECEIPT_ANATOMY.md): what each receipt field means
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md): what a receipt can and cannot show

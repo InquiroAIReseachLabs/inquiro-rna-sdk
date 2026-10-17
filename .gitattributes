@@ -1,0 +1,3 @@
+# Checkpoints are signed byte for byte (docs/OFFLINE.md, "Checkpoints and pinned keys"):
+# Git must never convert their line endings.
+*.ckpt -text
