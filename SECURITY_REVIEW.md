@@ -29,15 +29,16 @@ The verifier (`verifier/verify.py`, `verifier/verify.js`) provides:
 
 - **Tamper detection**: recomputes SHA-256 and BLAKE3 over canonical JSON of `payload`; any byte change to the payload produces a different hash and causes exit 1.
 - **Canonical form**: `json.dumps(sort_keys=True, separators=(",", ":"))` — deterministic across all conforming Python/JS implementations.
-- **No network calls**: verifier is fully offline; it reads only the receipt file provided.
+- **No network calls** for mock receipts and for live receipts saved with `receipt_body`; a live receipt without a body falls back to a labelled server-side `verify_receipt` call.
 
-The verifier does **not** verify Ed25519 signatures, Merkle proofs, or chain continuity — those are production-ledger concerns outside the scope of this SDK.
+`verifier/verify.py` does **not** verify Ed25519 signatures or chain continuity for hosted receipts (the hosted server does not sign receipts). The offline kit (`offline/`) verifies Ed25519 signatures, `seq` and `prev_hash` links; see [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for what that does and does not prove.
 
 ## §6.3 Dependency Inventory
 
 | Dependency | Version | Purpose | Risk |
 |---|---|---|---|
-| `blake3` (Python) | ≥ 0.4.0 | BLAKE3 hashing | Low — pure Rust binding, no network access |
+| `blake3` (Python) | == 1.0.8 (pinned) | BLAKE3 hashing | Low — Rust binding, no network access; pure-Python fallback in `offline/purepy.py` |
+| `cryptography` (Python) | == 42.0.8 (pinned) | Ed25519 sign/verify in the offline kit | Low; pure-Python verify fallback in `offline/purepy.py` |
 | `blake3` (npm) | ≥ 0.4.0 | BLAKE3 hashing in verify.js | Low |
 | `github.com/zeebo/blake3` | v0.2.4 | BLAKE3 hashing in Go examples | Low |
 
@@ -45,7 +46,7 @@ No other third-party runtime dependencies.
 
 ## §6.4 Secrets Scanning
 
-Gate B runs before every push. The CI workflow (`verify-receipts.yml`) scans for a set of internal strings that must not appear in the public repository. All patterns must return zero results or the workflow fails.
+`scripts/final_audit.sh` and the October 2026 audit (`AUDIT_REPORT.md`) scan the repository for credential-shaped strings and private keys. The only tracked key is the published demo key in `payloads/tactical_uas/demo_key/`, which proves nothing (see its README).
 
 ## §6.5 Responsible Disclosure
 

@@ -4,12 +4,12 @@ Hi [NAME],
 
 Great conversation. Here's everything your team needs to evaluate the Inquiro RNA SDK today — no waiting on me.
 
-FASTEST PATH (60 seconds, no setup):
-[Test in the live sandbox →]
-https://inquiroresearchlabs.ai/developers/sandbox/
+FASTEST PATH (2 minutes, no account, no network):
+https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk#start-here-an-evaluator-bundle-fully-offline-2-minutes
 
-That link opens a pre-filled sandbox with a real identity_verified event.
-Hit Submit. You'll see a dual-hash receipt come back and watch your browser verify it independently from our server. 25 free calls, no account required.
+Seal a sample mission on your machine, export one zip, and verify it with
+Python alone. The hosted sandbox (python3 scripts/first_receipt.py) is a
+shared free-tier demo with a temporary ledger: synthetic data only.
 
 FULL SDK (local development, 15 minutes):
 https://github.com/InquiroAIReseachLabs/inquiro-rna-sdk

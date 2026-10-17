@@ -2,12 +2,12 @@
 
 Receipts-native architecture for autonomous AI systems.
 Every AI decision emits a cryptographic receipt at compute-time.
-Dual-hash (SHA256 + BLAKE3) receipts with a ledger sequence position; Ed25519-signed, Merkle-anchored receipts are part of the pilot production tier. Receipts may support **authentication of electronic records** (for example, Federal Rule of Evidence 901(b)(9) in U.S. federal courts) when the full production ledger, custody chain, and legal posture are in scope—**this SDK is not legal advice**, is **not** jurisdiction-specific guidance, and **does not** by itself establish admissibility.
+The hosted sandbox issues dual-hash (SHA256 + BLAKE3) receipts with a ledger sequence position and a per-tenant chain link; it does not sign receipts. The offline kit seals Ed25519-signed, hash-chained receipts with your own key. What each proves, and what neither can, is in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md). Receipts may support **authentication of electronic records** (for example, Federal Rule of Evidence 901(b)(9) in U.S. federal courts) when the full production ledger, custody chain, and legal posture are in scope—**this SDK is not legal advice**, is **not** jurisdiction-specific guidance, and **does not** by itself establish admissibility.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/InquiroAIReseachLabs/inquiro-rna-sdk)
 [![MIT License](https://img.shields.io/badge/license-MIT-amber)](LICENSE)
 
-Read [`CLAUDEME.md`](CLAUDEME.md) (Inquiro execution standard) first.
+Read [`CLAUDEME.md`](CLAUDEME.md) (Inquiro execution standard) first. Evaluators: [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) (limits and trust assumptions), [docs/TEST_VECTORS.md](docs/TEST_VECTORS.md) (known-answer vectors), [docs/WINDOWS.md](docs/WINDOWS.md) (Git Bash and `py -3` steps), and `bash scripts/final_audit.sh` (end-to-end audit, writes `audit.log`).
 
 > **Public sandbox notice.** The hosted demo endpoint is a shared public sandbox. Send **synthetic data only**: no controlled, classified, export-restricted (for example ITAR or EAR), personal or customer data. Its ledger is **temporary** and is wiped whenever the service restarts. For anything you want to keep or show someone, use the offline kit below: it runs on your machine and never touches the network.
 
