@@ -2,7 +2,8 @@
 
   keygen  --private signer.pem --public signer.pub
   seal    --ledger receipts.jsonl --key signer.pem --event-type TYPE (--payload JSON | --digest SHA:B3) [--ts ISO]
-  verify  receipts.jsonl signer.pub [--json] [--allow-partial]
+          (append only: refuses a ledger that is damaged, truncated at the tail or signed by another key)
+  verify  receipts.jsonl signer.pub [--json] [--allow-partial] [--head SEQ:HASH] [--against EARLIER.jsonl]
   bundle  --ledger receipts.jsonl --public signer.pub --out evaluator_bundle.zip
 """
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 
 def main(argv=None) -> int:
@@ -42,13 +44,20 @@ def main(argv=None) -> int:
         print(f"key id {generate_keypair(a.private, a.public)}: private {a.private} (keep secret), public {a.public}")
         return 0
     if a.cmd == "seal":
-        from offline.seal import Sealer, load_private_key
+        from offline.seal import LedgerRefused, Sealer, load_private_key
         payload = json.loads(a.payload) if a.payload else None
-        r = Sealer(a.ledger, load_private_key(a.key)).seal(a.event_type, payload=payload, digest=a.digest, ts=a.ts)
+        try:
+            r = Sealer(a.ledger, load_private_key(a.key)).seal(a.event_type, payload=payload, digest=a.digest, ts=a.ts)
+        except LedgerRefused as e:
+            print(f"refused: {e}", file=sys.stderr)
+            return 2
         print(f"sealed seq {r['seq']} {r['event_type']} {r['receipt_hash'][:16]}...")
         return 0
     if a.cmd == "bundle":
         from offline.bundle import make_bundle
+        if Path(a.out).resolve() == Path(a.ledger).resolve():
+            print("refused: --out is the ledger; the bundle would overwrite it", file=sys.stderr)
+            return 2
         summary = make_bundle(a.ledger, a.public, a.out)
         print(f"wrote {a.out}\n{summary}")
         return 0 if summary.startswith("VERIFIED") else 1
