@@ -26,4 +26,6 @@ Each successful `submit_attestation` returns a `receipt_hash` (`sha256_hex:blake
 
 ## Regulatory framing (high level)
 
-Tamper-evident, time-stamped, independently verifiable records may support audit and authenticity requirements in many jurisdictions; consult counsel for your use case (e.g. FRE 901(b)(9) discussion in the main README). This is not legal advice.
+Receipts are designed to support evidence and record-keeping requirements, including authentication of electronic records under rules such as FRE 901(b)(9). This is not legal advice and does not by itself establish compliance or admissibility in any jurisdiction.
+
+For your own use case, consult counsel. Wording rules for any public copy: [LEGAL_LANGUAGE.md](LEGAL_LANGUAGE.md).

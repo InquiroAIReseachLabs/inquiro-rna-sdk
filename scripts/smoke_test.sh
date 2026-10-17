@@ -9,6 +9,7 @@
 #   WEBSITE_REPO=../Inquiro-Website-   also crawl every URL in the website repo
 #   RNA_PARTNER_KEY=...                pilot tenant key (sent as X-Partner-Key, never printed)
 #   RNA_BASE_URL=...                   another endpoint (default: rna.config.json)
+#   SKIP_CRAWL=1                       skip the link crawl (final_audit.sh runs it once itself)
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -94,7 +95,9 @@ grep -q "aiflightrecorder-1.onrender.com" "$TMP/dev.html" && pass "live /develop
 fi
 
 echo "=== 9. Link crawl ==="
-if [ -n "${WEBSITE_REPO:-}" ]; then
+if [ "${SKIP_CRAWL:-0}" = "1" ]; then
+  log "SKIP link crawl (SKIP_CRAWL=1)"
+elif [ -n "${WEBSITE_REPO:-}" ]; then
   rna_py scripts/link_crawl.py --website "$WEBSITE_REPO" && pass "link crawl" || fail "link crawl (see FAIL lines above)"
 else
   rna_py scripts/link_crawl.py && pass "link crawl (SDK only; set WEBSITE_REPO to include the website)" || fail "link crawl (see FAIL lines above)"

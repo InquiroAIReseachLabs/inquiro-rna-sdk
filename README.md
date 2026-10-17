@@ -2,12 +2,14 @@
 
 Receipts-native architecture for autonomous AI systems.
 Every AI decision emits a cryptographic receipt at compute-time.
-The hosted sandbox issues dual-hash (SHA256 + BLAKE3) receipts with a ledger sequence position and a per-tenant chain link; it does not sign receipts. The offline kit seals Ed25519-signed, hash-chained receipts with your own key. What each proves, and what neither can, is in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md). Receipts may support **authentication of electronic records** (for example, Federal Rule of Evidence 901(b)(9) in U.S. federal courts) when the full production ledger, custody chain, and legal posture are in scope—**this SDK is not legal advice**, is **not** jurisdiction-specific guidance, and **does not** by itself establish admissibility.
+The hosted sandbox issues dual-hash (SHA256 + BLAKE3) receipts with a ledger sequence position and a per-tenant chain link; it does not sign receipts. The offline kit seals Ed25519-signed, hash-chained receipts with your own key. What each proves, and what neither can, is in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+
+Receipts are designed to support evidence and record-keeping requirements, including authentication of electronic records under rules such as FRE 901(b)(9). This is not legal advice and does not by itself establish compliance or admissibility in any jurisdiction.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/InquiroAIReseachLabs/inquiro-rna-sdk)
 [![MIT License](https://img.shields.io/badge/license-MIT-amber)](LICENSE)
 
-Read [`CLAUDEME.md`](CLAUDEME.md) (Inquiro execution standard) first. Evaluators: [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) (limits and trust assumptions), [docs/TEST_VECTORS.md](docs/TEST_VECTORS.md) (known-answer vectors), [docs/WINDOWS.md](docs/WINDOWS.md) (Git Bash and `py -3` steps), and `bash scripts/final_audit.sh` (end-to-end audit, writes `audit.log`).
+Read [`CLAUDEME.md`](CLAUDEME.md) (Inquiro execution standard) first. Evaluators: [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) (limits and trust assumptions), [docs/TEST_VECTORS.md](docs/TEST_VECTORS.md) (known-answer vectors), [docs/WINDOWS.md](docs/WINDOWS.md) (Git Bash and `py -3` steps), `bash scripts/final_audit.sh` (end-to-end audit, writes `audit.log`, ends with `READY FOR EVALUATOR` or a numbered list of fixes), [docs/LEGAL_LANGUAGE.md](docs/LEGAL_LANGUAGE.md) (approved legal wording, pending counsel), and [HUMAN_ACTIONS.md](HUMAN_ACTIONS.md) (what only a person can do).
 
 > **Public sandbox notice.** The hosted demo endpoint is a shared public sandbox. Send **synthetic data only**: no controlled, classified, export-restricted (for example ITAR or EAR), personal or customer data. Its ledger is **temporary** and is wiped whenever the service restarts. For anything you want to keep or show someone, use the offline kit below: it runs on your machine and never touches the network.
 
@@ -67,7 +69,7 @@ python3 scripts/first_receipt.py --out receipt.json
 python3 verifier/verify.py receipt.json
 ```
 
-`first_receipt.py` wraps [`payloads/identity_verified.json`](payloads/identity_verified.json) in the envelope the live server requires (`event_type`, `device_id`, `timestamp`, `signature`, `payload`), stamps a fresh timestamp (the server rejects a repeated one as a replay), submits it, and prints `accepted`, `chain_position` and `receipt_hash`. Run it twice and `chain_position` goes up.
+`first_receipt.py` wraps [`payloads/identity_verified.json`](payloads/identity_verified.json) in the envelope the live server requires (`event_type`, `device_id`, `timestamp`, `signature`, `payload`), stamps a fresh timestamp (the server rejects a repeated one as a replay), submits it, and prints `accepted`, `chain_position` and `receipt_hash`. Run it twice and `chain_position` goes up, by 5 on a quiet sandbox: it is the position in the server's whole ledger, which also records each call's request and sanitization receipts ([docs/RECEIPT_ANATOMY.md](docs/RECEIPT_ANATOMY.md#why-chain_position-jumps-by-5-per-first_receiptpy-run)). Your own count is `tenant_seq` in `receipt_body`.
 
 The public demo tenant accepts any non-empty `signature`. A pilot tenant checks a real Ed25519 signature against your registered key.
 
