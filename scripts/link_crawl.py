@@ -6,7 +6,10 @@ Usage:
 
 Pass: final status 200 reached directly or through permanent redirects (301/308).
 Warn: temporary redirect (302/307) to a 200, e.g. a login wall.
-Blocked: a site that refuses automated requests (LinkedIn, X); check by hand.
+Needs human check: a URL listed in scripts/link_allowlist.json that does not
+answer 200 (the retired host, the old GitHub org, primary sources and social
+sites that refuse automated requests). Printed with the reason from the file;
+does not fail the run.
 Fail: anything else. Exit 1 if any URL fails.
 
 Skipped (and listed as SKIP): localhost, placeholders (RECEIPT_ID, {id}, $VAR),
@@ -16,6 +19,7 @@ Standard library only; one GET per URL, sequential.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import time
@@ -28,11 +32,23 @@ SITE = "https://inquiroresearchlabs.ai"
 URL_RE = re.compile(r"""https?://[^\s"'<>)\]`|\\]+""")
 HREF_RE = re.compile(r"""(?:href|src)\s*=\s*["'](/[^"'#?\s]*)""")
 SDK_EXT = {".md", ".py", ".js", ".sh", ".yml", ".yaml", ".json", ".go", ".txt", ".toml"}
+# Local tool output (gitignored) and files whose URLs are fixtures, not links.
+SDK_SKIP_DIRS = {".pytest_cache", "__pycache__", ".venv", "venv", "legacy-internal"}
+SDK_SKIP_FILES = {"package-lock.json", "link_allowlist.json", "test_link_crawl.py"}
 SITE_SKIP_DIRS = {".git", "node_modules", "docs", "legal", "tests", "scripts", "src", "admin", "petproof-agent", "rna-starter-kit-v1", "data"}
 POST_ONLY = re.compile(r"/mcp(/|$)|/api/receipt/(emit|license|license-check|gumroad-webhook)$|/api/receipt-token$|/api/v1$")
 PLACEHOLDER = re.compile(r"[{}$<>]|RECEIPT_ID|YOUR_|example\.(com|org)|localhost|127\.0\.0\.1|0\.0\.0\.0|www\.w3\.org/2000/")
-# Sites that refuse automated requests (LinkedIn answers 999). Reported as BLOCKED: check by hand.
-BOT_WALLED = re.compile(r"^https?://([a-z]+\.)?(linkedin\.com|x\.com|twitter\.com)/")
+ALLOWLIST = Path(__file__).resolve().parent / "link_allowlist.json"
+HUMAN = "NEEDS HUMAN CHECK"
+
+
+def load_allowlist(path: Path = ALLOWLIST) -> list[tuple[str, str]]:
+    return [(e["prefix"].lower(), e["reason"]) for e in json.loads(path.read_text(encoding="utf-8"))["entries"]]
+
+
+def allowlisted(url: str, allow: list[tuple[str, str]]) -> str | None:
+    """The reason a URL may fail an automated check, or None."""
+    return next((reason for prefix, reason in allow if url.lower().startswith(prefix)), None)
 
 
 def clean(u: str) -> str:
@@ -43,12 +59,12 @@ def collect(root: Path, website: bool) -> dict[str, set[str]]:
     found: dict[str, set[str]] = {}
     for f in sorted(root.rglob("*")):
         rel = f.relative_to(root)
-        if not f.is_file() or set(rel.parts[:-1]) & ({".git", "node_modules"} | (SITE_SKIP_DIRS if website else set())):
+        if not f.is_file() or set(rel.parts[:-1]) & ({".git", "node_modules"} | (SITE_SKIP_DIRS if website else SDK_SKIP_DIRS)):
             continue
         if website:
             if not (f.suffix in {".html", ".txt", ".xml"} or rel.parts[0] == ".well-known" or rel.name == "_redirects"):
                 continue
-        elif f.suffix not in SDK_EXT or f.name == "package-lock.json":
+        elif f.suffix not in SDK_EXT or f.name in SDK_SKIP_FILES:
             continue
         try:
             lines = f.read_text(encoding="utf-8").splitlines()
@@ -94,7 +110,7 @@ def check(url: str) -> tuple[str, list[str]]:
             chain[-1] += f"->{url}"
             continue
         if code != 200:
-            return ("BLOCKED" if BOT_WALLED.match(url) and code in (403, 429, 999) else "FAIL"), chain
+            return "FAIL", chain
         temp = [c for c in chain[:-1] if not c.startswith(("301", "308"))]
         return ("WARN" if temp else "PASS"), chain
     return "FAIL", chain + ["too many redirects"]
@@ -111,7 +127,8 @@ def main() -> int:
         for u, src in collect(Path(args.website).resolve(), website=True).items():
             urls.setdefault(u, set()).update(src)
 
-    counts = {"PASS": 0, "WARN": 0, "BLOCKED": 0, "FAIL": 0, "SKIP": 0}
+    allow = load_allowlist()
+    counts = {"PASS": 0, "WARN": 0, HUMAN: 0, "FAIL": 0, "SKIP": 0}
     for u in sorted(urls):
         src = ", ".join(sorted(urls[u])[:3]) + (f" +{len(urls[u]) - 3}" if len(urls[u]) > 3 else "")
         if PLACEHOLDER.search(u) or POST_ONLY.search(urllib.parse.urlparse(u).path):
@@ -122,10 +139,13 @@ def main() -> int:
             print(f"URL   {u}  <- {src}")
             continue
         status, chain = check(u)
+        reason = allowlisted(u, allow) if status == "FAIL" else None
+        if reason:
+            status = HUMAN
         counts[status] += 1
-        print(f"{status}  {' | '.join(chain)}  {u}  <- {src}", flush=True)
+        print(f"{status}  {' | '.join(chain)}  {u}  <- {src}" + (f"  :: {reason}" if reason else ""), flush=True)
         time.sleep(0.2)
-    print(f"\nlink crawl: {len(urls)} URLs | " + " ".join(f"{k}={v}" for k, v in counts.items()))
+    print(f"\nlink crawl: {len(urls)} URLs | " + " ".join(f"{k.replace(' ', '_')}={v}" for k, v in counts.items()))
     return 1 if counts["FAIL"] else 0
 
 

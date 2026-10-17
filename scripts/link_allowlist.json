@@ -1,0 +1,45 @@
+{
+  "note": "URLs that scripts/link_crawl.py reports as NEEDS HUMAN CHECK instead of FAIL when they do not answer 200. Each entry is a URL prefix (case-insensitive) and the reason it is expected to fail an automated GET. A listed URL that does answer 200 is still reported PASS. Add an entry only with a reason a reviewer can check by hand.",
+  "entries": [
+    {
+      "prefix": "https://aiflightrecorder.onrender.com",
+      "reason": "Retired sandbox host (replaced by aiflightrecorder-1.onrender.com). Named on purpose in scripts/final_audit.sh (OLD_HOST) to show it is dead or suspended; no documentation links to it."
+    },
+    {
+      "prefix": "https://github.com/InquiroAIResearchLabsInc",
+      "reason": "Old GitHub org slug, renamed to InquiroAIReseachLabs. GitHub redirects repository URLs after a rename but not the old org page, so a 404 here is expected; it is only ever a deliberate probe that the old org is gone. Canonical org: https://github.com/InquiroAIReseachLabs."
+    },
+    {
+      "prefix": "https://codespaces.new/inquiroairesearchlabsinc",
+      "reason": "Old-org Codespaces launcher. Only the website Worker's CTA allowlist (src/index.ts:440, a protected file) still names it; the before/after is in HUMAN_ACTIONS.md. Canonical: https://codespaces.new/InquiroAIReseachLabs/inquiro-rna-sdk."
+    },
+    {
+      "prefix": "https://eur-lex.europa.eu/",
+      "reason": "Primary source (EU AI Act, Regulation (EU) 2024/1689). EUR-Lex answers automated requests with 202 and a JavaScript challenge page instead of the document. Open it in a browser and confirm the regulation text loads."
+    },
+    {
+      "prefix": "https://www.esd.whs.mil/",
+      "reason": "Primary source (DoD Directive 3000.09 PDF). The Washington Headquarters Services site answers automated requests with 403 (bot protection). Open it in a browser and confirm the PDF loads."
+    },
+    {
+      "prefix": "https://www.faa.gov/",
+      "reason": "Primary source (FAA BVLOS / Part 108 page). faa.gov answers automated requests with 403 (bot protection). Open it in a browser and confirm the page loads."
+    },
+    {
+      "prefix": "https://www.linkedin.com/",
+      "reason": "LinkedIn answers automated requests with 999 or a login wall. Open it in a browser."
+    },
+    {
+      "prefix": "https://linkedin.com/",
+      "reason": "LinkedIn answers automated requests with 999 or a login wall. Open it in a browser."
+    },
+    {
+      "prefix": "https://x.com/",
+      "reason": "X refuses automated requests (403/429). Open it in a browser."
+    },
+    {
+      "prefix": "https://twitter.com/",
+      "reason": "X refuses automated requests (403/429). Open it in a browser."
+    }
+  ]
+}
