@@ -13,7 +13,7 @@ from offline.verify import load_public_key, report, verify_ledger
 HERE = Path(__file__).resolve().parent
 
 README = """Offline receipt bundle
-======================
+----------------------
 
 Contents
   receipts.jsonl   signed, hash-chained receipts, one per line
