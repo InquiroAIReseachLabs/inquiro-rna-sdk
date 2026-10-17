@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from offline.seal import Sealer, generate_keypair, load_private_key  # noqa: E402
+from offline.seal import LedgerRefused, Sealer, generate_keypair, load_private_key  # noqa: E402
 from offline.verify import canonical, dual_hash  # noqa: E402
 
 TS_KEYS = ("timestamp", "ts", "time")
@@ -102,7 +102,10 @@ def main() -> int:
         raise SystemExit(f"FAIL: {a.ledger} exists; pass --append to continue it")
     if a.keygen:
         generate_keypair(a.key, a.keygen)
-    receipts = ingest(a.log, a.ledger, a.key, sort=a.sort, digest_only=a.digest_only)
+    try:
+        receipts = ingest(a.log, a.ledger, a.key, sort=a.sort, digest_only=a.digest_only)
+    except LedgerRefused as e:
+        raise SystemExit(f"refused: {e}")
     print(f"sealed {len(receipts)} receipts into {a.ledger} "
           f"(seq {receipts[0]['seq']}-{receipts[-1]['seq']}, key {receipts[0]['key_id']})" if receipts
           else "no rows")

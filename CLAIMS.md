@@ -46,6 +46,18 @@ Every material claim on the public surfaces of the three repositories, classifie
 | F11 | A new tenant from `_template.json` passes the full suite with zero code changes | pilot/ONBOARDING.md | LIVE-tested | `new_tenant.sh audit_check_001` then 411 passed, 13 skipped (Docker-only). |
 | F12 | Core recorder (`src/`) is frozen | pilot/GAP_ANALYSIS.md | Observed | No `src/` file changed in PRs 51/52 or this branch. |
 
+## 2a. "Append-only" (audit of 17 October, hardening branch)
+
+Single meaning used everywhere: the software has no operation that updates or deletes a ledger entry and refuses to write anything but the next one. It is not a statement about the storage. Component by component: `AIFlightRecorder/pilot/APPEND_ONLY.md`; attacker classes: `docs/THREAT_MODEL.md` section 0.
+
+| # | Claim | Where | Status | Evidence |
+|---|---|---|---|---|
+| A1 | Pilot server has no update or delete of ledger entries | pilot/APPEND_ONLY.md | LIVE-tested | `pilot/tests/test_ledger_append_only.py`: fails on any new file-mutating call in image code, any HTTP verb beyond OPTIONS/GET/POST, any new tool. |
+| A2 | Pilot refuses a write whose sequence is not last + 1 | pilot/APPEND_ONLY.md | LIVE-tested | Same file: gap, duplicate, unterminated tail and unreadable tail are refused with the file unchanged. Strict mode is on in the container image and at server start; off by default for the simulators. |
+| A3 | Offline sealer only appends and refuses a damaged or foreign ledger | docs/OFFLINE.md | LIVE-tested | `tests/test_append_only.py`: open flags, four kinds of damage, foreign key, two sealers on one file, CLI exit 2, `bundle --out` equal to the ledger. |
+| A4 | Verify reports gaps always; truncation and re-signing only against a recorded head or earlier export | docs/OFFLINE.md, THREAT_MODEL.md | LIVE-tested | `test_resigned_ledger_verifies_on_its_own` shows the limit; `--head` and `--against` tests show the detection. |
+| A5 | Storage is not append-only: pilot volume, Render disk, compose volumes and the offline file are read-write for whoever administers them | pilot/APPEND_ONLY.md (b),(c) | Stated limit | No `chattr +a`, WORM storage or read-only mount protects the ledger. Do not describe the ledger as write-once or immutable at the storage level. |
+
 ## 3. Website (`Inquiro-Website-`), material claims
 
 | # | Claim | Where (a095b66) | Status | Evidence / action |
